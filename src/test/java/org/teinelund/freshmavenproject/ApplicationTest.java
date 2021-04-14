@@ -14,11 +14,11 @@ public class ApplicationTest {
     }
 
     @Test
-    void executeWhereArgsContainsHelpOption() {
+    void executeWhereArgsContainsVersionOption() {
         // Initialize
-        String[] args = {"--help"};
+        String[] args = {"-V"};
         // Test
-        this.sut.execute(args);
+        // this.sut.execute(args, null);
         // Verify
     }
 }
