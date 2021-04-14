@@ -51,13 +51,13 @@ public class Application {
         try {
             application.execute(args, jc);
         }
-        catch(IOException e) {
-            System.err.println("[ERROR]:");
+        catch(Exception e) {
+            printError(e.getMessage());
             e.printStackTrace();
         }
     }
 
-    public void execute(String[] args, JCommander jc) throws IOException {
+    public void execute(String[] args, JCommander jc) {
         if (help || versionOfApplication) {
             if (help) {
                 jc.usage();
@@ -74,39 +74,49 @@ public class Application {
     }
 
     void verifyParameters() {
-        if (verbose) {
-            System.out.println("[VERBOSE] Verify Command Line Parameters.");
-        }
+        printVerbose("Verify Command Line Parameters.");
         if (Objects.isNull(groupid) || groupid.isBlank()) {
-            System.err.println("[ERROR] Group id is mandatory.");
+            printError("Group id is mandatory.");
             System.exit(1);
         }
         if (Objects.isNull(artifactId) || artifactId.isBlank()) {
-            System.err.println("[ERROR] Artifact id is mandatory.");
+            printError("Artifact id is mandatory.");
             System.exit(1);
         }
     }
 
-    Path createProjectFolder() throws IOException {
-        if (verbose) {
-            System.out.println("[VERBOSE] Create Project Folder.");
-        }
+    Path createProjectFolder() {
+        printVerbose("Create Project Folder.");
         String projectFolderName = artifactId;
         if (!Objects.isNull(projectName) && !projectName.isBlank()) {
             projectFolderName = projectName;
         }
         Path projectFolder = Path.of(SystemUtils.USER_DIR, projectFolderName);
 
-        if (verbose) {
-            System.out.println("[VERBOSE] Project Folder Path: '" + projectFolder.toString() + "'.");
-        }
+        printVerbose("Project Folder Path: '" + projectFolder.toString() + "'.");
 
-        FileUtils.forceMkdir(projectFolder.toFile());
-
-        if (verbose) {
-            System.out.println("[VERBOSE] Project Folder, '" + projectFolder.toString() + "', created.");
+        try {
+            FileUtils.forceMkdir(projectFolder.toFile());
+        } catch (IOException e) {
+            printError("Could not create project folder.");
+            System.exit(1);
         }
+        printVerbose("Project Folder, '" + projectFolder.toString() + "', created.");
 
         return projectFolder;
+    }
+
+    static void printInfo(String message) {
+        System.out.println("[INFO] " + message);
+    }
+
+    static void printError(String message) {
+        System.out.println("[ERROR] " + message);
+    }
+
+    void printVerbose(String message) {
+        if (verbose) {
+            System.out.println("[VERBOSE] " + message);
+        }
     }
 }
