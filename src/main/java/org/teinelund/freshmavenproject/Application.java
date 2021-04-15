@@ -85,8 +85,13 @@ public class Application {
         createPomFile(projectFolder, name, packageName);
 
         String[] folderNames = packageName.split("\\.");
+        printVerbose("Folder names: " + Arrays.toString(folderNames) + ".");
+        Path srcMainJava = Path.of(projectFolder.toString(), "src", "main", "java");
+        Path srcMainJavaPackagePath = Path.of(srcMainJava.toString(), folderNames);
+        Path srcTestJava = Path.of(projectFolder.toString(), "src", "test", "java");
+        Path srcTestJavaPackagePath = Path.of(srcTestJava.toString(), folderNames);
 
-        createSrcFolderWithSubFolders(projectFolder, folderNames);
+        createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath);
     }
 
     void verifyParameters() {
@@ -272,9 +277,24 @@ public class Application {
         }
     }
 
-    void createSrcFolderWithSubFolders(Path projectFolder, String[] folderNames) {
+    void createSrcFolderWithSubFolders(Path projectFolder, Path srcMainJavaPackagePath, Path srcTestJavaPackagePath) {
         printVerbose("Create 'src' folder with sub folders.");
-        printVerbose("Folder names: " + Arrays.toString(folderNames) + ".");
+        printVerbose("Java source path: '" + srcMainJavaPackagePath.toString() + "', java test path: '" +
+                srcTestJavaPackagePath.toString() + "'.");
+
+        try {
+            FileUtils.forceMkdir(srcMainJavaPackagePath.toFile());
+        } catch (IOException e) {
+            printError("Could not create folder '" + srcMainJavaPackagePath.toString() + "'.");
+            System.exit(1);
+        }
+
+        try {
+            FileUtils.forceMkdir(srcTestJavaPackagePath.toFile());
+        } catch (IOException e) {
+            printError("Could not create folder '" + srcTestJavaPackagePath.toString() + "'.");
+            System.exit(1);
+        }
     }
 
     static void printInfo(String message) {
