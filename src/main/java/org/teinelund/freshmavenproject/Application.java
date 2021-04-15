@@ -3,7 +3,6 @@ package org.teinelund.freshmavenproject;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.file.PathUtils;
 import org.apache.commons.lang3.SystemUtils;
 
 import java.io.IOException;
@@ -92,6 +91,8 @@ public class Application {
         Path srcTestJavaPackagePath = Path.of(srcTestJava.toString(), folderNames);
 
         createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath);
+
+        createApplicationSourceFile(name, packageName, srcMainJavaPackagePath);
     }
 
     void verifyParameters() {
@@ -288,11 +289,92 @@ public class Application {
             printError("Could not create folder '" + srcMainJavaPackagePath.toString() + "'.");
             System.exit(1);
         }
+        printVerbose("Folder structure: '" + srcMainJavaPackagePath.toString() + "' created.");
 
         try {
             FileUtils.forceMkdir(srcTestJavaPackagePath.toFile());
         } catch (IOException e) {
             printError("Could not create folder '" + srcTestJavaPackagePath.toString() + "'.");
+            System.exit(1);
+        }
+        printVerbose("Folder structure: '" + srcTestJavaPackagePath.toString() + "' created.");
+    }
+
+    void createApplicationSourceFile(String name, String packageName, Path srcMainJavaPackagePath) {
+        printVerbose("Create 'Application.java' source file.");
+
+        Path ApplicationSourceFilePath = Path.of(srcMainJavaPackagePath.toString(), "Application.java");
+
+        String ApplicationSourcefileContent = "package " + packageName + ";\n" +
+                "\n" +
+                "import com.beust.jcommander.JCommander;\n" +
+                "import com.beust.jcommander.Parameter;\n" +
+                "\n" +
+                "/**\n" +
+                " * Main class\n" +
+                " */\n" +
+                "public class Application {\n" +
+                "\n" +
+                "    @Parameter(names = { \"-v\", \"--verbose\" }, description = \"Verbose output.\", order = 50)\n" +
+                "    private boolean verbose = false;\n" +
+                "\n" +
+                "    @Parameter(names = { \"-V\", \"--version\" }, description = \"Version of application.\", order = 51)\n" +
+                "    private boolean version = false;\n" +
+                "\n" +
+                "    @Parameter(names = { \"-h\", \"--help\" }, help = true, order = 52)\n" +
+                "    private boolean help = false;\n" +
+                "\n" +
+                "    public static void main(String[] args) {\n" +
+                "        Application application = new Application();\n" +
+                "\n" +
+                "        JCommander jc = JCommander.newBuilder()\n" +
+                "                .addObject(application)\n" +
+                "                .programName(\"" + name + "\")\n" +
+                "                .build();\n" +
+                "        jc.parse(args);\n" +
+                "\n" +
+                "        try {\n" +
+                "            application.execute(args, jc);\n" +
+                "        }\n" +
+                "        catch(Exception e) {\n" +
+                "            printError(e.getMessage());\n" +
+                "            e.printStackTrace();\n" +
+                "        }\n" +
+                "    }\n" +
+                "\n" +
+                "    public void execute(String[] args, JCommander jc) {\n" +
+                "        if (help || version) {\n" +
+                "            if (help) {\n" +
+                "                jc.usage();\n" +
+                "            }\n" +
+                "            else {\n" +
+                "                System.out.println(\"Fresh Maven Project (c) 2021 Henrik Teinelund.\");\n" +
+                "            }\n" +
+                "            System.exit(0);\n" +
+                "        }\n" +
+                "\n" +
+                "        System.out.println(\"Welcome to " + name + "!\");\n" +
+                "    }\n" +
+                "\n" +
+                "    static void printInfo(String message) {\n" +
+                "        System.out.println(\"[INFO] \" + message);\n" +
+                "    }\n" +
+                "\n" +
+                "    static void printError(String message) {\n" +
+                "        System.out.println(\"[ERROR] \" + message);\n" +
+                "    }\n" +
+                "\n" +
+                "    void printVerbose(String message) {\n" +
+                "        if (verbose) {\n" +
+                "            System.out.println(\"[VERBOSE] \" + message);\n" +
+                "        }\n" +
+                "    }\n" +
+                "}\n";
+
+        try {
+            FileUtils.write(ApplicationSourceFilePath.toFile(), ApplicationSourcefileContent, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            printError("Could not create Application.java source file.");
             System.exit(1);
         }
     }
