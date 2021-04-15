@@ -93,6 +93,8 @@ public class Application {
         createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath);
 
         createApplicationSourceFile(name, packageName, srcMainJavaPackagePath);
+
+        createApplicationTestSourceFile(packageName, srcTestJavaPackagePath);
     }
 
     void verifyParameters() {
@@ -375,6 +377,44 @@ public class Application {
             FileUtils.write(ApplicationSourceFilePath.toFile(), ApplicationSourcefileContent, StandardCharsets.UTF_8);
         } catch (IOException e) {
             printError("Could not create Application.java source file.");
+            System.exit(1);
+        }
+    }
+
+    void createApplicationTestSourceFile(String packageName, Path srcTestJavaPackagePath) {
+        printVerbose("Create 'ApplicationTest.java' source file.");
+
+        Path ApplicationTestSourceFilePath = Path.of(srcTestJavaPackagePath.toString(), "ApplicationTest.java");
+
+        String ApplicationTestSourcefileContent = "package " + packageName + ";\n" +
+                "\n" +
+                "import org.junit.jupiter.api.BeforeEach;\n" +
+                "import org.junit.jupiter.api.Test;\n" +
+                "import org.junit.jupiter.api.TestInfo;\n" +
+                "\n" +
+                "public class ApplicationTest {\n" +
+                "\n" +
+                "    private Application sut = null;\n" +
+                "\n" +
+                "    @BeforeEach\n" +
+                "    void init(TestInfo testInfo) {\n" +
+                "        this.sut = new Application();\n" +
+                "    }\n" +
+                "\n" +
+                "    @Test\n" +
+                "    void executeWhereArgsContainsVersionOption() {\n" +
+                "        // Initialize\n" +
+                "        String[] args = {\"-V\"};\n" +
+                "        // Test\n" +
+                "        // this.sut.execute(args, null);\n" +
+                "        // Verify\n" +
+                "    }\n" +
+                "}\n";
+
+        try {
+            FileUtils.write(ApplicationTestSourceFilePath.toFile(), ApplicationTestSourcefileContent, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            printError("Could not create ApplicationTest.java source file.");
             System.exit(1);
         }
     }
