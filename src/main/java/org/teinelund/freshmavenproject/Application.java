@@ -3,8 +3,8 @@ package org.teinelund.freshmavenproject;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -64,10 +64,14 @@ public class Application {
                 jc.usage();
             }
             else {
-                System.out.println("Fresh Maven Project (c) 2021 Henrik Teinelund.");
+                String versionString = this.getClass().getPackage().getImplementationVersion();
+                System.out.println("Fresh Maven Project. Version: " + versionString);
+                System.out.println("Copyright (c) 2021 Henrik Teinelund.");
             }
             System.exit(0);
         }
+
+        printVerbose("Verbose mode on.");
 
         verifyParameters();
 
@@ -154,11 +158,6 @@ public class Application {
                 "            <version>1.81</version>\n" +
                 "        </dependency>\n" +
                 "        <dependency>\n" +
-                "            <groupId>org.apache.maven</groupId>\n" +
-                "            <artifactId>maven-model</artifactId>\n" +
-                "            <version>3.8.1</version>\n" +
-                "        </dependency>\n" +
-                "        <dependency>\n" +
                 "            <groupId>org.fusesource.jansi</groupId>\n" +
                 "            <artifactId>jansi</artifactId>\n" +
                 "            <version>2.3.2</version>\n" +
@@ -212,6 +211,9 @@ public class Application {
                 "                    <archive>\n" +
                 "                        <manifest>\n" +
                 "                            <mainClass>" + packageName + ".Application</mainClass>\n" +
+                "                                <addDefaultImplementationEntries>\n" +
+                "                                    true\n" +
+                "                                </addDefaultImplementationEntries>\n" +
                 "                        </manifest>\n" +
                 "                    </archive>\n" +
                 "                </configuration>\n" +
@@ -219,7 +221,7 @@ public class Application {
                 "            <plugin>\n" +
                 "                <groupId>org.apache.maven.plugins</groupId>\n" +
                 "                <artifactId>maven-shade-plugin</artifactId>\n" +
-                "                <version>3.2.4</version>\n" +
+                "                <version>3.2.0</version>\n" +
                 "                <executions>\n" +
                 "                    <execution>\n" +
                 "                        <phase>package</phase>\n" +
@@ -303,6 +305,9 @@ public class Application {
     }
 
     void createApplicationSourceFile(String name, String packageName, Path srcMainJavaPackagePath) {
+        String versionName = name.replaceAll("-", " ").replaceAll("_", " ");
+        versionName = StringUtils.capitalize(versionName);
+
         printVerbose("Create 'Application.java' source file.");
 
         Path ApplicationSourceFilePath = Path.of(srcMainJavaPackagePath.toString(), "Application.java");
@@ -350,10 +355,14 @@ public class Application {
                 "                jc.usage();\n" +
                 "            }\n" +
                 "            else {\n" +
-                "                System.out.println(\"Fresh Maven Project (c) 2021 Henrik Teinelund.\");\n" +
+                "                String versionString = this.getClass().getPackage().getImplementationVersion();\n" +
+                "                System.out.println(\"" + versionName + ". Version: \" + versionString);\n" +
+                "                System.out.println(\"Copyright (c) 2021 Henrik Teinelund.\");\n" +
                 "            }\n" +
                 "            System.exit(0);\n" +
                 "        }\n" +
+                "\n" +
+                "        printVerbose(\"Verbose mode on.\");\n" +
                 "\n" +
                 "        System.out.println(\"Welcome to " + name + "!\");\n" +
                 "    }\n" +
