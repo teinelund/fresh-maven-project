@@ -5,7 +5,7 @@
     <groupId>org.teinelund</groupId>
     <artifactId>fresh-maven-project</artifactId>
     <packaging>jar</packaging>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>fresh-maven-project</name>
 
     <dependencies>

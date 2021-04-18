@@ -29,7 +29,7 @@ public class Application {
     private String projectName = "";
 
     @Parameter(names = { "--no-git" }, description = "Don't include .gitignore and README.md files in project.", order = 4)
-    private boolean git = false;
+    private boolean noGit = false;
 
     @Parameter(names = { "-v", "--verbose" }, description = "Verbose output.", order = 50)
     private boolean verbose = false;
@@ -442,6 +442,12 @@ public class Application {
 
     void createGitFiles(Path projectFolder, String versionName) {
         printVerbose("Create git files.");
+
+        if (noGit) {
+            printVerbose("--no-git option true. No 'README.md' or '.gitignore' files will be created for the project.");
+            return;
+        }
+
         printVerbose("* Create 'README.md' file.");
 
         Path readmeMdFilePath = Path.of(projectFolder.toString(), "README.md");
