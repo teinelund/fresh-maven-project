@@ -96,9 +96,23 @@ public class Application {
 
         createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath);
 
-        createApplicationSourceFile(name, packageName, srcMainJavaPackagePath);
+        String versionName = createVersionName(name);
+
+        createApplicationSourceFile(name, versionName, packageName, srcMainJavaPackagePath);
 
         createApplicationTestSourceFile(packageName, srcTestJavaPackagePath);
+
+        createGitFiles(projectFolder, versionName);
+    }
+
+    String createVersionName(String name) {
+        String versionName = name.replaceAll("-", " ").replaceAll("_", " ");
+        String versionNameArr[] = versionName.split(" ");
+        for (int i=0; i<versionNameArr.length; i++) {
+            versionNameArr[i] = StringUtils.capitalize(versionNameArr[i]);
+        }
+        versionName = String.join(" ", versionNameArr);
+        return versionName;
     }
 
     void verifyParameters() {
@@ -304,9 +318,7 @@ public class Application {
         printVerbose("Folder structure: '" + srcTestJavaPackagePath.toString() + "' created.");
     }
 
-    void createApplicationSourceFile(String name, String packageName, Path srcMainJavaPackagePath) {
-        String versionName = name.replaceAll("-", " ").replaceAll("_", " ");
-        versionName = StringUtils.capitalize(versionName);
+    void createApplicationSourceFile(String name, String versionName, String packageName, Path srcMainJavaPackagePath) {
 
         printVerbose("Create 'Application.java' source file.");
 
@@ -424,6 +436,73 @@ public class Application {
             FileUtils.write(ApplicationTestSourceFilePath.toFile(), ApplicationTestSourcefileContent, StandardCharsets.UTF_8);
         } catch (IOException e) {
             printError("Could not create ApplicationTest.java source file.");
+            System.exit(1);
+        }
+    }
+
+    void createGitFiles(Path projectFolder, String versionName) {
+        printVerbose("Create git files.");
+        printVerbose("* Create 'README.md' file.");
+
+        Path readmeMdFilePath = Path.of(projectFolder.toString(), "README.md");
+
+        String readmeMdfileContent = "# " + versionName + "\n";
+
+        try {
+            FileUtils.write(readmeMdFilePath.toFile(), readmeMdfileContent, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            printError("Could not create 'README.md' file.");
+            System.exit(1);
+        }
+
+        printVerbose("* Create '.gitignore' file.");
+
+        Path gitignoreFilePath = Path.of(projectFolder.toString(), ".gitignore");
+
+        String gitignorefileContent = "target/\n" +
+                "!.mvn/wrapper/maven-wrapper.jar\n" +
+                "dependency-reduced-pom.xml\n" +
+                "\n" +
+                "#OS junk files\n" +
+                "[Tt]humbs.db\n" +
+                "*.DS_Store\n" +
+                "\n" +
+                "#Maven\n" +
+                ".mvn/\n" +
+                "mvnw\n" +
+                "mvnw.cmd\n" +
+                "\n" +
+                "### STS ###\n" +
+                ".apt_generated\n" +
+                ".classpath\n" +
+                ".factorypath\n" +
+                ".project\n" +
+                ".settings\n" +
+                ".springBeans\n" +
+                "\n" +
+                "### IntelliJ IDEA ###\n" +
+                ".idea\n" +
+                "*.iws\n" +
+                "*.iml\n" +
+                "*.ipr\n" +
+                "\n" +
+                "### NetBeans ###\n" +
+                "nbproject/private/\n" +
+                "build/\n" +
+                "nbbuild/\n" +
+                "dist/\n" +
+                "nbdist/\n" +
+                ".nb-gradle/\n" +
+                "\n" +
+                "### PlantUML\n" +
+                "*.png\n" +
+                "*.svg\n" +
+                "\n";
+
+        try {
+            FileUtils.write(gitignoreFilePath.toFile(), gitignorefileContent, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            printError("Could not create '.gitignore' file.");
             System.exit(1);
         }
     }
