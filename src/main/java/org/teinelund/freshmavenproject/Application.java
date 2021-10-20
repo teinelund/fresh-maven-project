@@ -16,41 +16,12 @@ import java.util.Objects;
  */
 public class Application {
 
-    @Parameter(names = { "-g", "--groupId" }, description = "Maven project group id. Mandatory.", order = 0)
-    private String groupid;
-
-    @Parameter(names = { "-a", "--artifactId" }, description = "Maven project artifact id. Mandatory.", order = 1)
-    private String artifactId;
-
-    @Parameter(names = { "-vp", "--versionOfProject" }, description = "Maven project version. Optional.", order = 2)
-    private String versionOfApplication = "1.0.0-SNAPSHOT";
-
-    @Parameter(names = { "-n", "--projectName" }, description = "Maven project name. Optional. Default value is the value of artifact id.", order = 3)
-    private String projectName = "";
-
-    @Parameter(names = { "--no-git" }, description = "Don't include .gitignore and README.md files in project.", order = 4)
-    private boolean noGit = false;
-
-    @Parameter(names = { "-v", "--verbose" }, description = "Verbose output.", order = 50)
-    private boolean verbose = false;
-
-    @Parameter(names = { "-V", "--version" }, description = "Version of Fresh Maven Project Application.", order = 51)
-    private boolean version = false;
-
-    @Parameter(names = { "-h", "--help" }, help = true, order = 52)
-    private boolean help = false;
-
     public static void main(String[] args) {
         Application application = new Application();
-
-        JCommander jc = JCommander.newBuilder()
-                .addObject(application)
-                .programName("fresh-maven-project")
-                .build();
-        jc.parse(args);
+        CommandLineOptions options = new CommandLineOptions();
 
         try {
-            application.execute(args, jc);
+            application.execute(args, options);
         }
         catch(Exception e) {
             printError(e.getMessage());
@@ -58,10 +29,55 @@ public class Application {
         }
     }
 
-    public void execute(String[] args, JCommander jc) {
-        if (help || version) {
-            if (help) {
-                jc.usage();
+    public void execute(String[] args, CommandLineOptions options) {
+
+        parseCommandLineOptions(args, options);
+
+        ifHelpOptionOrVersionOption(options);
+
+        printVerbose("Verbose mode on.", options);
+
+        verifyParameters(options);
+
+        Path projectFolder = createProjectFolder(options);
+
+        String name = options.getArtifactId();
+        String projectName = options.getProjectName();
+        if (!Objects.isNull(projectName) && !projectName.isBlank()) {
+            name = projectName;
+        }
+
+        String packageName = options.getGroupid().replaceAll("-", "").replaceAll("_", "") +
+                "." + options.getArtifactId().replaceAll("-", "").replaceAll("_", "");
+
+        createPomFile(projectFolder, name, packageName, options);
+
+        String[] folderNames = packageName.split("\\.");
+        printVerbose("Folder names: " + Arrays.toString(folderNames) + ".", options);
+        Path srcMainJava = Path.of(projectFolder.toString(), "src", "main", "java");
+        Path srcMainJavaPackagePath = Path.of(srcMainJava.toString(), folderNames);
+        Path srcTestJava = Path.of(projectFolder.toString(), "src", "test", "java");
+        Path srcTestJavaPackagePath = Path.of(srcTestJava.toString(), folderNames);
+
+        createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath, options);
+
+        String versionName = createVersionName(name);
+
+        createApplicationSourceFile(name, versionName, packageName, srcMainJavaPackagePath, options);
+
+        createApplicationTestSourceFile(packageName, srcTestJavaPackagePath, options);
+
+        createGitFiles(projectFolder, versionName, options);
+    }
+
+    void parseCommandLineOptions(String[] args, CommandLineOptions options) {
+        options.parse(args);
+    }
+
+    private void ifHelpOptionOrVersionOption(CommandLineOptions options) {
+        if (options.isHelp() || options.isVersion()) {
+            if (options.isHelp()) {
+                options.usage();
             }
             else {
                 String versionString = this.getClass().getPackage().getImplementationVersion();
@@ -70,39 +86,6 @@ public class Application {
             }
             System.exit(0);
         }
-
-        printVerbose("Verbose mode on.");
-
-        verifyParameters();
-
-        Path projectFolder = createProjectFolder();
-
-        String name = artifactId;
-        if (!Objects.isNull(projectName) && !projectName.isBlank()) {
-            name = projectName;
-        }
-
-        String packageName = groupid.replaceAll("-", "").replaceAll("_", "") +
-                "." + artifactId.replaceAll("-", "").replaceAll("_", "");
-
-        createPomFile(projectFolder, name, packageName);
-
-        String[] folderNames = packageName.split("\\.");
-        printVerbose("Folder names: " + Arrays.toString(folderNames) + ".");
-        Path srcMainJava = Path.of(projectFolder.toString(), "src", "main", "java");
-        Path srcMainJavaPackagePath = Path.of(srcMainJava.toString(), folderNames);
-        Path srcTestJava = Path.of(projectFolder.toString(), "src", "test", "java");
-        Path srcTestJavaPackagePath = Path.of(srcTestJava.toString(), folderNames);
-
-        createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath);
-
-        String versionName = createVersionName(name);
-
-        createApplicationSourceFile(name, versionName, packageName, srcMainJavaPackagePath);
-
-        createApplicationTestSourceFile(packageName, srcTestJavaPackagePath);
-
-        createGitFiles(projectFolder, versionName);
     }
 
     String createVersionName(String name) {
@@ -115,27 +98,27 @@ public class Application {
         return versionName;
     }
 
-    void verifyParameters() {
-        printVerbose("Verify Command Line Parameters.");
-        if (Objects.isNull(groupid) || groupid.isBlank()) {
+    void verifyParameters(CommandLineOptions options) {
+        printVerbose("Verify Command Line Parameters.", options);
+        if (Objects.isNull(options.getGroupid()) || options.getGroupid().isBlank()) {
             printError("Group id is mandatory.");
             System.exit(1);
         }
-        if (Objects.isNull(artifactId) || artifactId.isBlank()) {
+        if (Objects.isNull(options.getArtifactId()) || options.getArtifactId().isBlank()) {
             printError("Artifact id is mandatory.");
             System.exit(1);
         }
     }
 
-    Path createProjectFolder() {
-        printVerbose("Create Project Folder.");
-        String projectFolderName = artifactId;
-        if (!Objects.isNull(projectName) && !projectName.isBlank()) {
-            projectFolderName = projectName;
+    Path createProjectFolder(CommandLineOptions options) {
+        printVerbose("Create Project Folder.", options);
+        String projectFolderName = options.getArtifactId();
+        if (!Objects.isNull(options.getProjectName()) && !options.getProjectName().isBlank()) {
+            projectFolderName = options.getProjectName();
         }
         Path projectFolder = Path.of(SystemUtils.USER_DIR, projectFolderName);
 
-        printVerbose("Project Folder Path: '" + projectFolder.toString() + "'.");
+        printVerbose("Project Folder Path: '" + projectFolder.toString() + "'.", options);
 
         try {
             FileUtils.forceMkdir(projectFolder.toFile());
@@ -143,15 +126,15 @@ public class Application {
             printError("Could not create project folder.");
             System.exit(1);
         }
-        printVerbose("Project Folder, '" + projectFolder.toString() + "', created.");
+        printVerbose("Project Folder, '" + projectFolder.toString() + "', created.", options);
 
         return projectFolder;
     }
 
-    void createPomFile(Path projectFolder, String name, String packageName) {
+    void createPomFile(Path projectFolder, String name, String packageName, CommandLineOptions options) {
 
-        printVerbose("Create 'pom.xml' file.");
-        printVerbose("Project name: '" + name + "', packageName: '" + packageName + "'.");
+        printVerbose("Create 'pom.xml' file.", options);
+        printVerbose("Project name: '" + name + "', packageName: '" + packageName + "'.", options);
 
         Path pomFilePath = Path.of(projectFolder.toString(), "pom.xml");
 
@@ -159,10 +142,10 @@ public class Application {
                 "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
                 "         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd\">\n" +
                 "    <modelVersion>4.0.0</modelVersion>\n" +
-                "    <groupId>" + groupid + "</groupId>\n" +
-                "    <artifactId>" + artifactId + "</artifactId>\n" +
+                "    <groupId>" + options.getGroupid() + "</groupId>\n" +
+                "    <artifactId>" + options.getArtifactId() + "</artifactId>\n" +
                 "    <packaging>jar</packaging>\n" +
-                "    <version>" + versionOfApplication + "</version>\n" +
+                "    <version>" + options.getVersionOfApplication() + "</version>\n" +
                 "    <name>" + name + "</name>\n" +
                 "\n" +
                 "    <dependencies>\n" +
@@ -296,10 +279,11 @@ public class Application {
         }
     }
 
-    void createSrcFolderWithSubFolders(Path projectFolder, Path srcMainJavaPackagePath, Path srcTestJavaPackagePath) {
-        printVerbose("Create 'src' folder with sub folders.");
+    void createSrcFolderWithSubFolders(Path projectFolder, Path srcMainJavaPackagePath, Path srcTestJavaPackagePath,
+                                       CommandLineOptions options) {
+        printVerbose("Create 'src' folder with sub folders.", options);
         printVerbose("Java source path: '" + srcMainJavaPackagePath.toString() + "', java test path: '" +
-                srcTestJavaPackagePath.toString() + "'.");
+                srcTestJavaPackagePath.toString() + "'.", options);
 
         try {
             FileUtils.forceMkdir(srcMainJavaPackagePath.toFile());
@@ -307,7 +291,7 @@ public class Application {
             printError("Could not create folder '" + srcMainJavaPackagePath.toString() + "'.");
             System.exit(1);
         }
-        printVerbose("Folder structure: '" + srcMainJavaPackagePath.toString() + "' created.");
+        printVerbose("Folder structure: '" + srcMainJavaPackagePath.toString() + "' created.", options);
 
         try {
             FileUtils.forceMkdir(srcTestJavaPackagePath.toFile());
@@ -315,12 +299,13 @@ public class Application {
             printError("Could not create folder '" + srcTestJavaPackagePath.toString() + "'.");
             System.exit(1);
         }
-        printVerbose("Folder structure: '" + srcTestJavaPackagePath.toString() + "' created.");
+        printVerbose("Folder structure: '" + srcTestJavaPackagePath.toString() + "' created.", options);
     }
 
-    void createApplicationSourceFile(String name, String versionName, String packageName, Path srcMainJavaPackagePath) {
+    void createApplicationSourceFile(String name, String versionName, String packageName, Path srcMainJavaPackagePath,
+                                     CommandLineOptions options) {
 
-        printVerbose("Create 'Application.java' source file.");
+        printVerbose("Create 'Application.java' source file.", options);
 
         Path ApplicationSourceFilePath = Path.of(srcMainJavaPackagePath.toString(), "Application.java");
 
@@ -402,8 +387,8 @@ public class Application {
         }
     }
 
-    void createApplicationTestSourceFile(String packageName, Path srcTestJavaPackagePath) {
-        printVerbose("Create 'ApplicationTest.java' source file.");
+    void createApplicationTestSourceFile(String packageName, Path srcTestJavaPackagePath, CommandLineOptions options) {
+        printVerbose("Create 'ApplicationTest.java' source file.", options);
 
         Path ApplicationTestSourceFilePath = Path.of(srcTestJavaPackagePath.toString(), "ApplicationTest.java");
 
@@ -440,15 +425,15 @@ public class Application {
         }
     }
 
-    void createGitFiles(Path projectFolder, String versionName) {
-        printVerbose("Create git files.");
+    void createGitFiles(Path projectFolder, String versionName, CommandLineOptions options) {
+        printVerbose("Create git files.", options);
 
-        if (noGit) {
-            printVerbose("--no-git option true. No 'README.md' or '.gitignore' files will be created for the project.");
+        if (options.isNoGit()) {
+            printVerbose("--no-git option true. No 'README.md' or '.gitignore' files will be created for the project.", options);
             return;
         }
 
-        printVerbose("* Create 'README.md' file.");
+        printVerbose("* Create 'README.md' file.", options);
 
         Path readmeMdFilePath = Path.of(projectFolder.toString(), "README.md");
 
@@ -461,7 +446,7 @@ public class Application {
             System.exit(1);
         }
 
-        printVerbose("* Create '.gitignore' file.");
+        printVerbose("* Create '.gitignore' file.", options);
 
         Path gitignoreFilePath = Path.of(projectFolder.toString(), ".gitignore");
 
@@ -521,8 +506,8 @@ public class Application {
         System.out.println("[ERROR] " + message);
     }
 
-    void printVerbose(String message) {
-        if (verbose) {
+    void printVerbose(String message, CommandLineOptions options) {
+        if (options.isVerbose()) {
             System.out.println("[VERBOSE] " + message);
         }
     }
