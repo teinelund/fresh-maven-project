@@ -1,7 +1,5 @@
 package org.teinelund.freshmavenproject;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
@@ -147,6 +145,9 @@ public class Application {
                 "    <packaging>jar</packaging>\n" +
                 "    <version>" + options.getVersionOfApplication() + "</version>\n" +
                 "    <name>" + name + "</name>\n" +
+                "    <properties>\n" +
+                "        <junit.jupiter.version>5.8.1</junit.jupiter.version>\n" +
+                "    </properties>\n" +
                 "\n" +
                 "    <dependencies>\n" +
                 "        <dependency>\n" +
@@ -157,12 +158,12 @@ public class Application {
                 "        <dependency>\n" +
                 "            <groupId>org.fusesource.jansi</groupId>\n" +
                 "            <artifactId>jansi</artifactId>\n" +
-                "            <version>2.3.2</version>\n" +
+                "            <version>2.4.0</version>\n" +
                 "        </dependency>\n" +
                 "        <dependency>\n" +
                 "            <groupId>commons-io</groupId>\n" +
                 "            <artifactId>commons-io</artifactId>\n" +
-                "            <version>2.8.0</version>\n" +
+                "            <version>2.11.0</version>\n" +
                 "        </dependency>\n" +
                 "        <dependency>\n" +
                 "            <groupId>org.apache.commons</groupId>\n" +
@@ -173,26 +174,26 @@ public class Application {
                 "        <dependency>\n" +
                 "            <groupId>org.junit.jupiter</groupId>\n" +
                 "            <artifactId>junit-jupiter-api</artifactId>\n" +
-                "            <version>5.7.1</version>\n" +
+                "            <version>${junit.jupiter.version}</version>\n" +
                 "            <scope>test</scope>\n" +
                 "        </dependency>\n" +
                 "        <dependency>\n" +
                 "            <groupId>org.junit.jupiter</groupId>\n" +
                 "            <artifactId>junit-jupiter-engine</artifactId>\n" +
-                "            <version>5.7.1</version>\n" +
+                "            <version>${junit.jupiter.version}</version>\n" +
                 "            <scope>test</scope>\n" +
                 "        </dependency>\n" +
                 "        <dependency>\n" +
                 "            <groupId>org.assertj</groupId>\n" +
                 "            <artifactId>assertj-core</artifactId>\n" +
                 "            <!-- use 2.9.1 for Java 7 projects -->\n" +
-                "            <version>3.19.0</version>\n" +
+                "            <version>3.21.0</version>\n" +
                 "            <scope>test</scope>\n" +
                 "        </dependency>\n" +
                 "        <dependency>\n" +
                 "            <groupId>org.mockito</groupId>\n" +
                 "            <artifactId>mockito-core</artifactId>\n" +
-                "            <version>3.9.0</version>\n" +
+                "            <version>4.0.0</version>\n" +
                 "            <scope>test</scope>\n" +
                 "        </dependency>\n" +
                 "    </dependencies>\n" +
