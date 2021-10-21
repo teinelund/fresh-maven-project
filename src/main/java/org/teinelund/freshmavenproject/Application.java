@@ -3,7 +3,11 @@ package org.teinelund.freshmavenproject;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -451,48 +455,9 @@ public class Application {
 
         Path gitignoreFilePath = Path.of(projectFolder.toString(), ".gitignore");
 
-        String gitignorefileContent = "target/\n" +
-                "!.mvn/wrapper/maven-wrapper.jar\n" +
-                "dependency-reduced-pom.xml\n" +
-                "\n" +
-                "#OS junk files\n" +
-                "[Tt]humbs.db\n" +
-                "*.DS_Store\n" +
-                "\n" +
-                "#Maven\n" +
-                ".mvn/\n" +
-                "mvnw\n" +
-                "mvnw.cmd\n" +
-                "\n" +
-                "### STS ###\n" +
-                ".apt_generated\n" +
-                ".classpath\n" +
-                ".factorypath\n" +
-                ".project\n" +
-                ".settings\n" +
-                ".springBeans\n" +
-                "\n" +
-                "### IntelliJ IDEA ###\n" +
-                ".idea\n" +
-                "*.iws\n" +
-                "*.iml\n" +
-                "*.ipr\n" +
-                "\n" +
-                "### NetBeans ###\n" +
-                "nbproject/private/\n" +
-                "build/\n" +
-                "nbbuild/\n" +
-                "dist/\n" +
-                "nbdist/\n" +
-                ".nb-gradle/\n" +
-                "\n" +
-                "### PlantUML\n" +
-                "*.png\n" +
-                "*.svg\n" +
-                "\n";
-
+        InputStream is = Application.class.getResourceAsStream("/gitignore.txt");
         try {
-            FileUtils.write(gitignoreFilePath.toFile(), gitignorefileContent, StandardCharsets.UTF_8);
+            FileUtils.copyInputStreamToFile(is, gitignoreFilePath.toFile());
         } catch (IOException e) {
             printError("Could not create '.gitignore' file.");
             System.exit(1);
