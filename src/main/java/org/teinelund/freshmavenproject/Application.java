@@ -339,7 +339,7 @@ public class Application {
 
         try
         {
-            template = Velocity.getTemplate("templates/Application.java");
+            template = Velocity.getTemplate("templates/Application.vty");
         }
         catch( ResourceNotFoundException | ParseErrorException | MethodInvocationException e )
         {
@@ -371,7 +371,7 @@ public class Application {
 
         try
         {
-            template = Velocity.getTemplate("templates/ApplicationTest.java");
+            template = Velocity.getTemplate("templates/ApplicationTest.vty");
         }
         catch( ResourceNotFoundException | ParseErrorException | MethodInvocationException e )
         {
