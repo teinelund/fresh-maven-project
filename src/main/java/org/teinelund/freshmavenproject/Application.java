@@ -354,7 +354,7 @@ public class Application {
             template.merge(context, targetFileContent);
             FileUtils.write(targetFilePath.toFile(), targetFileContent.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            printError("Could not create '" + targetFileName + "' source file.");
+            printError("Could not create '" + targetFileName + "' file.");
             System.exit(1);
         }
     }
@@ -392,17 +392,8 @@ public class Application {
             System.exit(1);
         }
 
-        printVerbose("* Create '.gitignore' file.", options);
-
-        Path gitignoreFilePath = Path.of(projectFolder.toString(), ".gitignore");
-
-        InputStream is = Application.class.getResourceAsStream("/gitignore.txt");
-        try {
-            FileUtils.copyInputStreamToFile(is, gitignoreFilePath.toFile());
-        } catch (IOException e) {
-            printError("Could not create '.gitignore' file.");
-            System.exit(1);
-        }
+        processVelocityTemplate(".gitignore", "gitignore.vty", projectFolder,
+                options, context);
     }
 
     static void printInfo(String message) {
