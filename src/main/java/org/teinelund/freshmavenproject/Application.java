@@ -76,7 +76,7 @@ public class Application {
 
         createApplicationSourceFile(srcMainJavaPackagePath, options, context);
 
-        createApplicationTestSourceFile(packageName, srcTestJavaPackagePath, options);
+        createApplicationTestSourceFile(srcTestJavaPackagePath, options, context);
 
         createGitFiles(projectFolder, versionName, options);
     }
@@ -333,8 +333,7 @@ public class Application {
 
         printVerbose("Create 'Application.java' source file.", options);
 
-        Path ApplicationSourceFilePath = Path.of(srcMainJavaPackagePath.toString(), "templates/Application.java");
-        Writer writer = null;
+        Path ApplicationSourceFilePath = Path.of(srcMainJavaPackagePath.toString(), "Application.java");
 
         Template template = null;
 
@@ -362,38 +361,32 @@ public class Application {
         }
     }
 
-    void createApplicationTestSourceFile(String packageName, Path srcTestJavaPackagePath, CommandLineOptions options) {
+    void createApplicationTestSourceFile(Path srcTestJavaPackagePath, CommandLineOptions options, VelocityContext context) {
+
         printVerbose("Create 'ApplicationTest.java' source file.", options);
 
         Path ApplicationTestSourceFilePath = Path.of(srcTestJavaPackagePath.toString(), "ApplicationTest.java");
 
-        String ApplicationTestSourcefileContent = "package " + packageName + ";\n" +
-                "\n" +
-                "import org.junit.jupiter.api.BeforeEach;\n" +
-                "import org.junit.jupiter.api.Test;\n" +
-                "import org.junit.jupiter.api.TestInfo;\n" +
-                "\n" +
-                "public class ApplicationTest {\n" +
-                "\n" +
-                "    private Application sut = null;\n" +
-                "\n" +
-                "    @BeforeEach\n" +
-                "    void init(TestInfo testInfo) {\n" +
-                "        this.sut = new Application();\n" +
-                "    }\n" +
-                "\n" +
-                "    @Test\n" +
-                "    void executeWhereArgsContainsVersionOption() {\n" +
-                "        // Initialize\n" +
-                "        String[] args = {\"-V\"};\n" +
-                "        // Test\n" +
-                "        // this.sut.execute(args, null);\n" +
-                "        // Verify\n" +
-                "    }\n" +
-                "}\n";
+        Template template = null;
 
+        try
+        {
+            template = Velocity.getTemplate("templates/ApplicationTest.java");
+        }
+        catch( ResourceNotFoundException | ParseErrorException | MethodInvocationException e )
+        {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        catch( Exception e )
+        {
+            e.printStackTrace();
+            System.exit(1);
+        }
         try {
-            FileUtils.write(ApplicationTestSourceFilePath.toFile(), ApplicationTestSourcefileContent, StandardCharsets.UTF_8);
+            StringWriter content = new StringWriter();
+            template.merge(context, content);
+            FileUtils.write(ApplicationTestSourceFilePath.toFile(), content.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             printError("Could not create ApplicationTest.java source file.");
             System.exit(1);
