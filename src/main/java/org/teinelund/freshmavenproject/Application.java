@@ -10,7 +10,6 @@ import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -334,14 +333,14 @@ public class Application {
 
         printVerbose("Create 'Application.java' source file.", options);
 
-        Path ApplicationSourceFilePath = Path.of(srcMainJavaPackagePath.toString(), "Application.java");
+        Path ApplicationSourceFilePath = Path.of(srcMainJavaPackagePath.toString(), "templates/Application.java");
         Writer writer = null;
 
         Template template = null;
 
         try
         {
-            template = Velocity.getTemplate("Application.java");
+            template = Velocity.getTemplate("templates/Application.java");
         }
         catch( ResourceNotFoundException | ParseErrorException | MethodInvocationException e )
         {
