@@ -3,15 +3,23 @@ package org.teinelund.freshmavenproject;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
+import org.apache.velocity.Template;
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.Velocity;
+import org.apache.velocity.exception.MethodInvocationException;
+import org.apache.velocity.exception.ParseErrorException;
+import org.apache.velocity.exception.ResourceNotFoundException;
 
-import java.io.BufferedReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Properties;
 
 /**
  * Main class
@@ -65,11 +73,25 @@ public class Application {
 
         String versionName = createVersionName(name);
 
-        createApplicationSourceFile(name, versionName, packageName, srcMainJavaPackagePath, options);
+        VelocityContext context = initializeVelocity(name, versionName, packageName);
+
+        createApplicationSourceFile(srcMainJavaPackagePath, options, context);
 
         createApplicationTestSourceFile(packageName, srcTestJavaPackagePath, options);
 
         createGitFiles(projectFolder, versionName, options);
+    }
+
+    VelocityContext initializeVelocity(String programName, String versionName, String packageName) {
+        Properties p = new Properties();
+        p.setProperty("resource.loader", "class");
+        p.setProperty("class.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
+        Velocity.init(p);
+        VelocityContext context = new VelocityContext();
+        context.put( "programName", programName);
+        context.put( "versionName", versionName);
+        context.put( "packageName", packageName);
+        return context;
     }
 
     void parseCommandLineOptions(String[] args, CommandLineOptions options) {
@@ -307,85 +329,34 @@ public class Application {
         printVerbose("Folder structure: '" + srcTestJavaPackagePath.toString() + "' created.", options);
     }
 
-    void createApplicationSourceFile(String name, String versionName, String packageName, Path srcMainJavaPackagePath,
-                                     CommandLineOptions options) {
+    void createApplicationSourceFile(Path srcMainJavaPackagePath,
+                                     CommandLineOptions options, VelocityContext context) {
 
         printVerbose("Create 'Application.java' source file.", options);
 
         Path ApplicationSourceFilePath = Path.of(srcMainJavaPackagePath.toString(), "Application.java");
+        Writer writer = null;
 
-        String ApplicationSourcefileContent = "package " + packageName + ";\n" +
-                "\n" +
-                "import com.beust.jcommander.JCommander;\n" +
-                "import com.beust.jcommander.Parameter;\n" +
-                "\n" +
-                "/**\n" +
-                " * Main class\n" +
-                " */\n" +
-                "public class Application {\n" +
-                "\n" +
-                "    @Parameter(names = { \"-v\", \"--verbose\" }, description = \"Verbose output.\", order = 50)\n" +
-                "    private boolean verbose = false;\n" +
-                "\n" +
-                "    @Parameter(names = { \"-V\", \"--version\" }, description = \"Version of application.\", order = 51)\n" +
-                "    private boolean version = false;\n" +
-                "\n" +
-                "    @Parameter(names = { \"-h\", \"--help\" }, help = true, order = 52)\n" +
-                "    private boolean help = false;\n" +
-                "\n" +
-                "    public static void main(String[] args) {\n" +
-                "        Application application = new Application();\n" +
-                "\n" +
-                "        JCommander jc = JCommander.newBuilder()\n" +
-                "                .addObject(application)\n" +
-                "                .programName(\"" + name + "\")\n" +
-                "                .build();\n" +
-                "        jc.parse(args);\n" +
-                "\n" +
-                "        try {\n" +
-                "            application.execute(args, jc);\n" +
-                "        }\n" +
-                "        catch(Exception e) {\n" +
-                "            printError(e.getMessage());\n" +
-                "            e.printStackTrace();\n" +
-                "        }\n" +
-                "    }\n" +
-                "\n" +
-                "    public void execute(String[] args, JCommander jc) {\n" +
-                "        if (help || version) {\n" +
-                "            if (help) {\n" +
-                "                jc.usage();\n" +
-                "            }\n" +
-                "            else {\n" +
-                "                String versionString = this.getClass().getPackage().getImplementationVersion();\n" +
-                "                System.out.println(\"" + versionName + ". Version: \" + versionString);\n" +
-                "                System.out.println(\"Copyright (c) 2021 Henrik Teinelund.\");\n" +
-                "            }\n" +
-                "            System.exit(0);\n" +
-                "        }\n" +
-                "\n" +
-                "        printVerbose(\"Verbose mode on.\");\n" +
-                "\n" +
-                "        System.out.println(\"Welcome to " + name + "!\");\n" +
-                "    }\n" +
-                "\n" +
-                "    static void printInfo(String message) {\n" +
-                "        System.out.println(\"[INFO] \" + message);\n" +
-                "    }\n" +
-                "\n" +
-                "    static void printError(String message) {\n" +
-                "        System.out.println(\"[ERROR] \" + message);\n" +
-                "    }\n" +
-                "\n" +
-                "    void printVerbose(String message) {\n" +
-                "        if (verbose) {\n" +
-                "            System.out.println(\"[VERBOSE] \" + message);\n" +
-                "        }\n" +
-                "    }\n" +
-                "}\n";
+        Template template = null;
 
+        try
+        {
+            template = Velocity.getTemplate("Application.java");
+        }
+        catch( ResourceNotFoundException | ParseErrorException | MethodInvocationException e )
+        {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        catch( Exception e )
+        {
+            e.printStackTrace();
+            System.exit(1);
+        }
         try {
-            FileUtils.write(ApplicationSourceFilePath.toFile(), ApplicationSourcefileContent, StandardCharsets.UTF_8);
+            StringWriter content = new StringWriter();
+            template.merge(context, content);
+            FileUtils.write(ApplicationSourceFilePath.toFile(), content.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             printError("Could not create Application.java source file.");
             System.exit(1);
