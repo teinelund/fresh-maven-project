@@ -12,7 +12,6 @@ import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -50,16 +49,22 @@ public class Application {
 
         Path projectFolder = createProjectFolder(options);
 
-        String name = options.getArtifactId();
+        String programName = options.getArtifactId();
         String projectName = options.getProjectName();
         if (!Objects.isNull(projectName) && !projectName.isBlank()) {
-            name = projectName;
+            programName = projectName;
         }
 
         String packageName = options.getGroupid().replaceAll("-", "").replaceAll("_", "") +
                 "." + options.getArtifactId().replaceAll("-", "").replaceAll("_", "");
 
-        createPomFile(projectFolder, name, packageName, options);
+        String versionName = createVersionName(programName);
+
+        Context context = initializeVelocity(programName, versionName, packageName, options);
+
+        printVerbose("Project name: '" + programName + "', packageName: '" + packageName + "'.", options);
+
+        createPomFile(projectFolder, options, context);
 
         String[] folderNames = packageName.split("\\.");
         printVerbose("Folder names: " + Arrays.toString(folderNames) + ".", options);
@@ -70,10 +75,6 @@ public class Application {
 
         createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath, options);
 
-        String versionName = createVersionName(name);
-
-        Context context = initializeVelocity(name, versionName, packageName);
-
         createApplicationSourceFile(srcMainJavaPackagePath, options, context);
 
         createApplicationTestSourceFile(srcTestJavaPackagePath, options, context);
@@ -81,7 +82,7 @@ public class Application {
         createGitFiles(projectFolder, versionName, options, context);
     }
 
-    VelocityContext initializeVelocity(String programName, String versionName, String packageName) {
+    VelocityContext initializeVelocity(String programName, String versionName, String packageName, CommandLineOptions options) {
         Properties p = new Properties();
         p.setProperty("resource.loader", "class");
         p.setProperty("class.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
@@ -90,6 +91,9 @@ public class Application {
         context.put( "programName", programName);
         context.put( "versionName", versionName);
         context.put( "packageName", packageName);
+        context.put( "artifactId", options.getArtifactId());
+        context.put( "groupId", options.getGroupid());
+        context.put( "versionOfApplication", options.getVersionOfApplication());
         return context;
     }
 
@@ -154,155 +158,10 @@ public class Application {
         return projectFolder;
     }
 
-    void createPomFile(Path projectFolder, String name, String packageName, CommandLineOptions options) {
+    void createPomFile(Path projectFolder, CommandLineOptions options, Context context) {
 
-        printVerbose("Create 'pom.xml' file.", options);
-        printVerbose("Project name: '" + name + "', packageName: '" + packageName + "'.", options);
-
-        Path pomFilePath = Path.of(projectFolder.toString(), "pom.xml");
-
-        String pomfileContent = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n" +
-                "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
-                "         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd\">\n" +
-                "    <modelVersion>4.0.0</modelVersion>\n" +
-                "    <groupId>" + options.getGroupid() + "</groupId>\n" +
-                "    <artifactId>" + options.getArtifactId() + "</artifactId>\n" +
-                "    <packaging>jar</packaging>\n" +
-                "    <version>" + options.getVersionOfApplication() + "</version>\n" +
-                "    <name>" + name + "</name>\n" +
-                "    <properties>\n" +
-                "        <junit.jupiter.version>5.8.1</junit.jupiter.version>\n" +
-                "    </properties>\n" +
-                "\n" +
-                "    <dependencies>\n" +
-                "        <dependency>\n" +
-                "            <groupId>com.beust</groupId>\n" +
-                "            <artifactId>jcommander</artifactId>\n" +
-                "            <version>1.81</version>\n" +
-                "        </dependency>\n" +
-                "        <dependency>\n" +
-                "            <groupId>org.fusesource.jansi</groupId>\n" +
-                "            <artifactId>jansi</artifactId>\n" +
-                "            <version>2.4.0</version>\n" +
-                "        </dependency>\n" +
-                "        <dependency>\n" +
-                "            <groupId>commons-io</groupId>\n" +
-                "            <artifactId>commons-io</artifactId>\n" +
-                "            <version>2.11.0</version>\n" +
-                "        </dependency>\n" +
-                "        <dependency>\n" +
-                "            <groupId>org.apache.commons</groupId>\n" +
-                "            <artifactId>commons-lang3</artifactId>\n" +
-                "            <version>3.11</version>\n" +
-                "        </dependency>\n" +
-                "        <!-- TEST -->\n" +
-                "        <dependency>\n" +
-                "            <groupId>org.junit.jupiter</groupId>\n" +
-                "            <artifactId>junit-jupiter-api</artifactId>\n" +
-                "            <version>${junit.jupiter.version}</version>\n" +
-                "            <scope>test</scope>\n" +
-                "        </dependency>\n" +
-                "        <dependency>\n" +
-                "            <groupId>org.junit.jupiter</groupId>\n" +
-                "            <artifactId>junit-jupiter-engine</artifactId>\n" +
-                "            <version>${junit.jupiter.version}</version>\n" +
-                "            <scope>test</scope>\n" +
-                "        </dependency>\n" +
-                "        <dependency>\n" +
-                "            <groupId>org.assertj</groupId>\n" +
-                "            <artifactId>assertj-core</artifactId>\n" +
-                "            <!-- use 2.9.1 for Java 7 projects -->\n" +
-                "            <version>3.21.0</version>\n" +
-                "            <scope>test</scope>\n" +
-                "        </dependency>\n" +
-                "        <dependency>\n" +
-                "            <groupId>org.mockito</groupId>\n" +
-                "            <artifactId>mockito-core</artifactId>\n" +
-                "            <version>4.0.0</version>\n" +
-                "            <scope>test</scope>\n" +
-                "        </dependency>\n" +
-                "    </dependencies>\n" +
-                "\n" +
-                "    <build>\n" +
-                "        <plugins>\n" +
-                "            <plugin>\n" +
-                "                <groupId>org.apache.maven.plugins</groupId>\n" +
-                "                <artifactId>maven-jar-plugin</artifactId>\n" +
-                "                <version>3.2.0</version>\n" +
-                "                <configuration>\n" +
-                "                    <finalName>${project.name}</finalName>\n" +
-                "                    <archive>\n" +
-                "                        <manifest>\n" +
-                "                            <mainClass>" + packageName + ".Application</mainClass>\n" +
-                "                                <addDefaultImplementationEntries>\n" +
-                "                                    true\n" +
-                "                                </addDefaultImplementationEntries>\n" +
-                "                        </manifest>\n" +
-                "                    </archive>\n" +
-                "                </configuration>\n" +
-                "            </plugin>\n" +
-                "            <plugin>\n" +
-                "                <groupId>org.apache.maven.plugins</groupId>\n" +
-                "                <artifactId>maven-shade-plugin</artifactId>\n" +
-                "                <version>3.2.0</version>\n" +
-                "                <executions>\n" +
-                "                    <execution>\n" +
-                "                        <phase>package</phase>\n" +
-                "                        <goals>\n" +
-                "                            <goal>shade</goal>\n" +
-                "                        </goals>\n" +
-                "                        <configuration>\n" +
-                "                            <transformers>\n" +
-                "                                <transformer\n" +
-                "                                        implementation=\"org.apache.maven.plugins.shade.resource.ManifestResourceTransformer\">\n" +
-                "                                    <!-- Main class -->\n" +
-                "                                    <mainClass>" + packageName + ".Application</mainClass>\n" +
-                "                                </transformer>\n" +
-                "                            </transformers>\n" +
-                "                        </configuration>\n" +
-                "                    </execution>\n" +
-                "                </executions>\n" +
-                "            </plugin>\n" +
-                "            <plugin>\n" +
-                "                <groupId>org.apache.maven.plugins</groupId>\n" +
-                "                <artifactId>maven-compiler-plugin</artifactId>\n" +
-                "                <version>3.8.1</version>\n" +
-                "                <configuration>\n" +
-                "                    <source>14</source>\n" +
-                "                    <target>14</target>\n" +
-                "                </configuration>\n" +
-                "            </plugin>\n" +
-                "            <plugin>\n" +
-                "                <groupId>org.apache.maven.plugins</groupId>\n" +
-                "                <artifactId>maven-surefire-plugin</artifactId>\n" +
-                "                <version>2.22.2</version>\n" +
-                "            </plugin>\n" +
-                "            <plugin>\n" +
-                "                <groupId>org.apache.maven.plugins</groupId>\n" +
-                "                <artifactId>maven-help-plugin</artifactId>\n" +
-                "                <version>3.2.0</version>\n" +
-                "            </plugin>\n" +
-                "            <plugin>\n" +
-                "                <groupId>org.apache.maven.plugins</groupId>\n" +
-                "                <artifactId>maven-clean-plugin</artifactId>\n" +
-                "                <version>3.1.0</version>\n" +
-                "            </plugin>\n" +
-                "            <plugin>\n" +
-                "                <groupId>org.apache.maven.plugins</groupId>\n" +
-                "                <artifactId>maven-install-plugin</artifactId>\n" +
-                "                <version>2.5.2</version>\n" +
-                "            </plugin>\n" +
-                "        </plugins>\n" +
-                "\n" +
-                "    </build>\n" +
-                "\n" +
-                "</project>";
-        try {
-            FileUtils.write(pomFilePath.toFile(), pomfileContent, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            printError("Could not create pom.xml file.");
-            System.exit(1);
-        }
+        processVelocityTemplate("pom.xml", "pom.vty", projectFolder,
+                options, context);
     }
 
     void createSrcFolderWithSubFolders(Path projectFolder, Path srcMainJavaPackagePath, Path srcTestJavaPackagePath,
@@ -379,18 +238,8 @@ public class Application {
             return;
         }
 
-        printVerbose("* Create 'README.md' file.", options);
-
-        Path readmeMdFilePath = Path.of(projectFolder.toString(), "README.md");
-
-        String readmeMdfileContent = "# " + versionName + "\n";
-
-        try {
-            FileUtils.write(readmeMdFilePath.toFile(), readmeMdfileContent, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            printError("Could not create 'README.md' file.");
-            System.exit(1);
-        }
+        processVelocityTemplate("README.md", "README.vty", projectFolder,
+                options, context);
 
         processVelocityTemplate(".gitignore", "gitignore.vty", projectFolder,
                 options, context);
