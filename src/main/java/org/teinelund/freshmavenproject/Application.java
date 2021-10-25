@@ -6,6 +6,7 @@ import org.apache.commons.lang3.SystemUtils;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
+import org.apache.velocity.context.Context;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
@@ -13,7 +14,6 @@ import org.apache.velocity.exception.ResourceNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -72,7 +72,7 @@ public class Application {
 
         String versionName = createVersionName(name);
 
-        VelocityContext context = initializeVelocity(name, versionName, packageName);
+        Context context = initializeVelocity(name, versionName, packageName);
 
         createApplicationSourceFile(srcMainJavaPackagePath, options, context);
 
@@ -329,7 +329,7 @@ public class Application {
     }
 
     void createApplicationSourceFile(Path srcMainJavaPackagePath,
-                                     CommandLineOptions options, VelocityContext context) {
+                                     CommandLineOptions options, Context context) {
 
         printVerbose("Create 'Application.java' source file.", options);
 
@@ -361,7 +361,7 @@ public class Application {
         }
     }
 
-    void createApplicationTestSourceFile(Path srcTestJavaPackagePath, CommandLineOptions options, VelocityContext context) {
+    void createApplicationTestSourceFile(Path srcTestJavaPackagePath, CommandLineOptions options, Context context) {
 
         printVerbose("Create 'ApplicationTest.java' source file.", options);
 
