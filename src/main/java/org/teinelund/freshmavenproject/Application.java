@@ -78,7 +78,7 @@ public class Application {
 
         createApplicationTestSourceFile(srcTestJavaPackagePath, options, context);
 
-        createGitFiles(projectFolder, versionName, options);
+        createGitFiles(projectFolder, versionName, options, context);
     }
 
     VelocityContext initializeVelocity(String programName, String versionName, String packageName) {
@@ -328,18 +328,16 @@ public class Application {
         printVerbose("Folder structure: '" + srcTestJavaPackagePath.toString() + "' created.", options);
     }
 
-    void createApplicationSourceFile(Path srcMainJavaPackagePath,
-                                     CommandLineOptions options, Context context) {
+    void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, CommandLineOptions options, Context context) {
+        printVerbose("Create '" + targetFileName + "' source file.", options);
 
-        printVerbose("Create 'Application.java' source file.", options);
-
-        Path ApplicationSourceFilePath = Path.of(srcMainJavaPackagePath.toString(), "Application.java");
+        Path targetFilePath = Path.of(targetPath.toString(), targetFileName);
 
         Template template = null;
 
         try
         {
-            template = Velocity.getTemplate("templates/Application.vty");
+            template = Velocity.getTemplate("templates/" + templateName);
         }
         catch( ResourceNotFoundException | ParseErrorException | MethodInvocationException e )
         {
@@ -352,48 +350,28 @@ public class Application {
             System.exit(1);
         }
         try {
-            StringWriter content = new StringWriter();
-            template.merge(context, content);
-            FileUtils.write(ApplicationSourceFilePath.toFile(), content.toString(), StandardCharsets.UTF_8);
+            StringWriter targetFileContent = new StringWriter();
+            template.merge(context, targetFileContent);
+            FileUtils.write(targetFilePath.toFile(), targetFileContent.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            printError("Could not create Application.java source file.");
+            printError("Could not create '" + targetFileName + "' source file.");
             System.exit(1);
         }
+    }
+
+    void createApplicationSourceFile(Path srcMainJavaPackagePath,
+                                     CommandLineOptions options, Context context) {
+        processVelocityTemplate("Application.java", "Application.vty", srcMainJavaPackagePath,
+                options, context);
     }
 
     void createApplicationTestSourceFile(Path srcTestJavaPackagePath, CommandLineOptions options, Context context) {
 
-        printVerbose("Create 'ApplicationTest.java' source file.", options);
-
-        Path ApplicationTestSourceFilePath = Path.of(srcTestJavaPackagePath.toString(), "ApplicationTest.java");
-
-        Template template = null;
-
-        try
-        {
-            template = Velocity.getTemplate("templates/ApplicationTest.vty");
-        }
-        catch( ResourceNotFoundException | ParseErrorException | MethodInvocationException e )
-        {
-            e.printStackTrace();
-            System.exit(1);
-        }
-        catch( Exception e )
-        {
-            e.printStackTrace();
-            System.exit(1);
-        }
-        try {
-            StringWriter content = new StringWriter();
-            template.merge(context, content);
-            FileUtils.write(ApplicationTestSourceFilePath.toFile(), content.toString(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            printError("Could not create ApplicationTest.java source file.");
-            System.exit(1);
-        }
+        processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vty", srcTestJavaPackagePath,
+                options, context);
     }
 
-    void createGitFiles(Path projectFolder, String versionName, CommandLineOptions options) {
+    void createGitFiles(Path projectFolder, String versionName, CommandLineOptions options, Context context) {
         printVerbose("Create git files.", options);
 
         if (options.isNoGit()) {
