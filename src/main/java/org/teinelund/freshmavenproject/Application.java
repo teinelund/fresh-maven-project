@@ -351,7 +351,7 @@ public class Application {
 
     void createPomFile(Path projectFolder, ApplicationContext applicationContext, Context context) {
 
-        processVelocityTemplate("pom.xml", "pom.vty", projectFolder,
+        processVelocityTemplate("pom.xml", "pom.vtl", projectFolder,
                 applicationContext, context);
     }
 
@@ -404,13 +404,13 @@ public class Application {
 
     void createApplicationSourceFile(Path srcMainJavaPackagePath,
                                      ApplicationContext options, Context context) {
-        processVelocityTemplate("Application.java", "Application.vty", srcMainJavaPackagePath,
+        processVelocityTemplate("Application.java", "Application.vtl", srcMainJavaPackagePath,
                 options, context);
     }
 
     void createApplicationTestSourceFile(Path srcTestJavaPackagePath, ApplicationContext options, Context context) {
 
-        processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vty", srcTestJavaPackagePath,
+        processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vtl", srcTestJavaPackagePath,
                 options, context);
     }
 
@@ -422,10 +422,10 @@ public class Application {
             return;
         }
 
-        processVelocityTemplate("README.md", "README.vty", projectFolder,
+        processVelocityTemplate("README.md", "README.vtl", projectFolder,
                 applicationContext, context);
 
-        processVelocityTemplate(".gitignore", "gitignore.vty", projectFolder,
+        processVelocityTemplate(".gitignore", "gitignore.vtl", projectFolder,
                 applicationContext, context);
     }
 
