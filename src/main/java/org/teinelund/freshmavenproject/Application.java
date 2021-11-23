@@ -60,12 +60,13 @@ public class Application {
             programName = projectName;
         }
 
+
         String packageName = applicationContext.getGroupId().replaceAll("-", "").replaceAll("_", "") +
                 "." + applicationContext.getArtifactId().replaceAll("-", "").replaceAll("_", "");
 
-        String versionName = createVersionName(programName);
+        String programNameUsedInPrintVersion = createProgramNameUsedInPrintVersion(programName);
 
-        Context velocityContext = initializeVelocity(programName, versionName, packageName, applicationContext);
+        Context velocityContext = initializeVelocity(programName, programNameUsedInPrintVersion, packageName, applicationContext);
 
         printVerbose("Project name: '" + programName + "', packageName: '" + packageName + "'.", applicationContext);
 
@@ -84,7 +85,7 @@ public class Application {
 
         createApplicationTestSourceFile(srcTestJavaPackagePath, applicationContext, velocityContext);
 
-        createGitFiles(projectFolder, versionName, applicationContext, velocityContext);
+        createGitFiles(projectFolder, programNameUsedInPrintVersion, applicationContext, velocityContext);
     }
 
     void interactiveMode(CommandLineOptions options, ApplicationTypes applicationTypes, ApplicationContext context) {
@@ -270,14 +271,14 @@ public class Application {
         return queryOptions.get(answerIndex - 1);
     }
 
-    VelocityContext initializeVelocity(String programName, String versionName, String packageName, ApplicationContext applicationContext) {
+    VelocityContext initializeVelocity(String programName, String programNameUsedInPrintVersion, String packageName, ApplicationContext applicationContext) {
         Properties p = new Properties();
         p.setProperty("resource.loader", "class");
         p.setProperty("class.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
         Velocity.init(p);
         VelocityContext context = new VelocityContext();
         context.put( "programName", programName);
-        context.put( "versionName", versionName);
+        context.put( "programNameUsedInPrintVersion", programNameUsedInPrintVersion);
         context.put( "packageName", packageName);
         context.put( "artifactId", applicationContext.getArtifactId());
         context.put( "groupId", applicationContext.getGroupId());
@@ -303,7 +304,7 @@ public class Application {
         }
     }
 
-    String createVersionName(String name) {
+    String createProgramNameUsedInPrintVersion(String name) {
         String versionName = name.replaceAll("-", " ").replaceAll("_", " ");
         String versionNameArr[] = versionName.split(" ");
         for (int i=0; i<versionNameArr.length; i++) {
