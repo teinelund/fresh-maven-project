@@ -7,17 +7,16 @@ import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
 import org.apache.velocity.context.Context;
-import org.apache.velocity.exception.MethodInvocationException;
-import org.apache.velocity.exception.ParseErrorException;
-import org.apache.velocity.exception.ResourceNotFoundException;
-
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Scanner;
 
 /**
  * Main class
@@ -47,42 +46,231 @@ public class Application {
 
         verifyParameters(options);
 
-        Path projectFolder = createProjectFolder(options);
+        ApplicationTypes applicationTypes = new ApplicationTypes();
 
-        String programName = options.getArtifactId();
-        String projectName = options.getProjectName();
+        ApplicationContext applicationContext = new ApplicationContext();
+        interactiveMode(options, applicationTypes, applicationContext);
+        nonInteractiveMode(options, applicationTypes, applicationContext);
+
+        Path projectFolder = createProjectFolder(applicationContext);
+
+        String programName = applicationContext.getArtifactId();
+        String projectName = applicationContext.getProjectName();
         if (!Objects.isNull(projectName) && !projectName.isBlank()) {
             programName = projectName;
         }
 
-        String packageName = options.getGroupid().replaceAll("-", "").replaceAll("_", "") +
-                "." + options.getArtifactId().replaceAll("-", "").replaceAll("_", "");
+        String packageName = applicationContext.getGroupId().replaceAll("-", "").replaceAll("_", "") +
+                "." + applicationContext.getArtifactId().replaceAll("-", "").replaceAll("_", "");
 
         String versionName = createVersionName(programName);
 
-        Context context = initializeVelocity(programName, versionName, packageName, options);
+        Context velocityContext = initializeVelocity(programName, versionName, packageName, applicationContext);
 
-        printVerbose("Project name: '" + programName + "', packageName: '" + packageName + "'.", options);
+        printVerbose("Project name: '" + programName + "', packageName: '" + packageName + "'.", applicationContext);
 
-        createPomFile(projectFolder, options, context);
+        createPomFile(projectFolder, applicationContext, velocityContext);
 
         String[] folderNames = packageName.split("\\.");
-        printVerbose("Folder names: " + Arrays.toString(folderNames) + ".", options);
+        printVerbose("Folder names: " + Arrays.toString(folderNames) + ".", applicationContext);
         Path srcMainJava = Path.of(projectFolder.toString(), "src", "main", "java");
         Path srcMainJavaPackagePath = Path.of(srcMainJava.toString(), folderNames);
         Path srcTestJava = Path.of(projectFolder.toString(), "src", "test", "java");
         Path srcTestJavaPackagePath = Path.of(srcTestJava.toString(), folderNames);
 
-        createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath, options);
+        createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath, applicationContext);
 
-        createApplicationSourceFile(srcMainJavaPackagePath, options, context);
+        createApplicationSourceFile(srcMainJavaPackagePath, applicationContext, velocityContext);
 
-        createApplicationTestSourceFile(srcTestJavaPackagePath, options, context);
+        createApplicationTestSourceFile(srcTestJavaPackagePath, applicationContext, velocityContext);
 
-        createGitFiles(projectFolder, versionName, options, context);
+        createGitFiles(projectFolder, versionName, applicationContext, velocityContext);
     }
 
-    VelocityContext initializeVelocity(String programName, String versionName, String packageName, CommandLineOptions options) {
+    void interactiveMode(CommandLineOptions options, ApplicationTypes applicationTypes, ApplicationContext context) {
+        if (options.isInteractive()) {
+            printInteractive("Interactive mode.");
+            printInteractive("In this mode you type all the information by hand. First set values to groupId, artifactId, version,");
+            printInteractive("and project name. After that choose what type of application you want to build: stand-alone-application");
+            printInteractive("library JAR or a J2EE application. To the last part chose what technologies you want to use in your application.");
+            printInteractive("In all questions bellow: q=quit.");
+            printInteractive("Illegal characters will restart the query until correct. Default values in parenthesis, may be chosen");
+            printInteractive("by pressing Enter key.");
+            printInteractive("");
+
+            context.setGroupId(interactiveQuery("groupId"));
+            context.setArtifactId(interactiveQuery("artifactId"));
+            context.setVersionOfApplication(interactiveQuery("version", "1.0.0-SNAPSHOT"));
+
+            printInteractive("Project name is used as project folder name, 'name' tag in pom file and 'finalName' tag in pom file. ArtifactId is default value.");
+            context.setProjectName(interactiveQuery("project name", context.getArtifactId()));
+
+            String packageName = replaceMinusAndUnderscore(context.getGroupId() + "." + context.getArtifactId());
+            String folderPath = packageName.replaceAll("\\.", "/");
+            printInteractive("Root package is (groupId + artifactId): " + packageName + " . This will also produce the folder path");
+            printInteractive("\"" + folderPath + "\" in src/main and src/test.");
+            context.setPackageName(interactiveQuery("package name", packageName));
+
+            printInteractive("");
+            printInteractive("What kind of application do you want to create?");
+            int defaultOptionIndex = 1;
+            TypeOfApplication[] queryOptionsTypeOfApplication = TypeOfApplication.values();
+            TypeOfApplication typeOfApplication = interactiveQueryTypeOfApplication("Type of application", queryOptionsTypeOfApplication, defaultOptionIndex);
+            context.setTypeOfApplication(typeOfApplication);
+            printInteractive("You selected to create a " + typeOfApplication.getDescription() + ".");
+            printInteractive("");
+
+            printInteractive("What kind of stack of technologies/dependencies do you want to use?");
+            List<ApplicationType> queryOptions = applicationTypes.getQueries(typeOfApplication);
+            ApplicationType applicationType = interactiveQuery("Stack of technologies/dependencies", queryOptions, 1);
+            context.setApplicationType(applicationType);
+            printInteractive("");
+
+            printInteractive("Should GIT files (README.md, .gitignore) be created?");
+            Collection<String> queryOptionsYN = List.of("y", "n");
+            context.setNoGit(interactiveQuery("Git files (y/n)", queryOptionsYN, "y"));
+        }
+    }
+
+    void nonInteractiveMode(CommandLineOptions options, ApplicationTypes applicationTypes, ApplicationContext applicationContext) {
+        if (!options.isInteractive()) {
+            printInteractive("Non interactive mode not supported, yet.");
+            System.exit(1);
+        }
+    }
+
+    String replaceMinusAndUnderscore(String text) {
+        return text.replaceAll("-", "").replaceAll("_", "");
+    }
+
+    enum TypeOfApplication {
+        COMMAND_LINE_APPLICATION("Stand alone Application (Command Line Application)"),
+        LIBRARY("Library (Jar file)"),
+        J2EE("Java Enterprise Edition Application (J2EE)");
+
+        private String description;
+
+        TypeOfApplication(String description) {
+            this.description = description;
+        }
+
+        public String getDescription() {
+            return this.description;
+        }
+
+    }
+
+    String interactiveQuery(String question) {
+        return interactiveQuery(question, "");
+    }
+
+    String interactiveQuery(String question, String defaultValue) {
+        String query;
+        do {
+            printInteractiveQuestion(question + (Objects.isNull(defaultValue) || defaultValue.isBlank() ? ": " : " (" + defaultValue + "): "));
+            Scanner in = new Scanner(System.in);
+            query = in.nextLine();
+        } while((Objects.isNull(defaultValue) || defaultValue.isBlank()) && query.isBlank());
+        if ("q".equals(query)) {
+            System.exit(0);
+        }
+        if (Objects.nonNull(defaultValue) && !defaultValue.isBlank() && query.isBlank()) {
+            query = defaultValue;
+        }
+        return query;
+    }
+
+    String interactiveQuery(String question, Collection<String> options, String defaultValue) {
+        String query = "";
+        do {
+            StringBuilder queryText = new StringBuilder();
+            queryText.append(question);
+            queryText.append(" [");
+            int index = 0;
+            for (String option : options) {
+                if (index > 0) {
+                    queryText.append(", ");
+                }
+                queryText.append(option);
+                index++;
+            }
+            queryText.append("] ");
+            queryText.append(Objects.isNull(defaultValue) || defaultValue.isBlank() ? ": " : " (" + defaultValue + "): ");
+            printInteractiveQuestion(queryText.toString());
+            Scanner in = new Scanner(System.in);
+            query = in.nextLine();
+        } while(((Objects.isNull(defaultValue) || defaultValue.isBlank()) && query.isBlank()) ||
+                (!query.isBlank() && ! options.contains(query)));
+        if ("q".equals(query)) {
+            System.exit(0);
+        }
+        if (Objects.nonNull(defaultValue) && !defaultValue.isBlank() && query.isBlank()) {
+            query = defaultValue;
+        }
+        return query;
+    }
+
+    TypeOfApplication interactiveQueryTypeOfApplication(String question, TypeOfApplication[] queryOptions, int defaultOptionIndex) {
+        printInteractive("Select one of the following options:");
+        if (defaultOptionIndex < 0 || defaultOptionIndex >= queryOptions.length) {
+            throw new IllegalArgumentException("Default option index " + Integer.toString(defaultOptionIndex) +
+                    " has a illegal value. Legal value are 0 to " + Integer.toString(queryOptions.length - 1) + ".");
+        }
+        int index = 1;
+        for (TypeOfApplication queryOption : queryOptions) {
+            printInteractive("  " + Integer.toString(index) + ". " + queryOption.getDescription());
+            index++;
+        }
+        int answerIndex = -1;
+        String answer = "";
+        while(true) {
+            answer = interactiveQuery("Type of application (1-" + Integer.toString(queryOptions.length) + ")?",
+                    Integer.toString(defaultOptionIndex));
+            try {
+                answerIndex = Integer.parseInt(answer);
+            }
+            catch (Exception ex) {
+                continue;
+            }
+            if (answerIndex < 1 || answerIndex > queryOptions.length) {
+                continue;
+            }
+            break;
+        }
+
+        return queryOptions[answerIndex - 1];
+    }
+
+    ApplicationType interactiveQuery(String question, List<ApplicationType> queryOptions, int defaultOptionIndex) {
+        printInteractive("Select one of the following options:");
+        if (defaultOptionIndex < 1 || defaultOptionIndex > queryOptions.size()) {
+            throw new IllegalArgumentException("Default option index " + Integer.toString(defaultOptionIndex) + " has a illegal value. Legal value are 1 to " + Integer.toString(queryOptions.size()) + ".");
+        }
+        int index = 1;
+        for (ApplicationType queryOption : queryOptions) {
+            printInteractive("  " + Integer.toString(index) + ". " + queryOption.getDescription());
+            index++;
+        }
+        int answerIndex = -1;
+        String answer = "";
+        while(true) {
+            answer = interactiveQuery("Type of application (1-" + Integer.toString(queryOptions.size()) + ")?", Integer.toString(defaultOptionIndex));
+            try {
+                answerIndex = Integer.parseInt(answer);
+            }
+            catch (Exception ex) {
+                continue;
+            }
+            if (answerIndex < 1 || answerIndex > queryOptions.size()) {
+                continue;
+            }
+            break;
+        }
+
+        return queryOptions.get(answerIndex - 1);
+    }
+
+    VelocityContext initializeVelocity(String programName, String versionName, String packageName, ApplicationContext applicationContext) {
         Properties p = new Properties();
         p.setProperty("resource.loader", "class");
         p.setProperty("class.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
@@ -91,9 +279,9 @@ public class Application {
         context.put( "programName", programName);
         context.put( "versionName", versionName);
         context.put( "packageName", packageName);
-        context.put( "artifactId", options.getArtifactId());
-        context.put( "groupId", options.getGroupid());
-        context.put( "versionOfApplication", options.getVersionOfApplication());
+        context.put( "artifactId", applicationContext.getArtifactId());
+        context.put( "groupId", applicationContext.getGroupId());
+        context.put( "versionOfApplication", applicationContext.getVersionOfApplication());
         return context;
     }
 
@@ -127,25 +315,28 @@ public class Application {
 
     void verifyParameters(CommandLineOptions options) {
         printVerbose("Verify Command Line Parameters.", options);
-        if (Objects.isNull(options.getGroupid()) || options.getGroupid().isBlank()) {
-            printError("Group id is mandatory.");
-            System.exit(1);
-        }
-        if (Objects.isNull(options.getArtifactId()) || options.getArtifactId().isBlank()) {
-            printError("Artifact id is mandatory.");
-            System.exit(1);
+
+        if (!options.isInteractive()) {
+            if (Objects.isNull(options.getGroupid()) || options.getGroupid().isBlank()) {
+                printError("Group id is mandatory.");
+                System.exit(1);
+            }
+            if (Objects.isNull(options.getArtifactId()) || options.getArtifactId().isBlank()) {
+                printError("Artifact id is mandatory.");
+                System.exit(1);
+            }
         }
     }
 
-    Path createProjectFolder(CommandLineOptions options) {
-        printVerbose("Create Project Folder.", options);
-        String projectFolderName = options.getArtifactId();
-        if (!Objects.isNull(options.getProjectName()) && !options.getProjectName().isBlank()) {
-            projectFolderName = options.getProjectName();
+    Path createProjectFolder(ApplicationContext context) {
+        printVerbose("Create Project Folder.", context);
+        String projectFolderName = context.getArtifactId();
+        if (!Objects.isNull(context.getProjectName()) && !context.getProjectName().isBlank()) {
+            projectFolderName = context.getProjectName();
         }
         Path projectFolder = Path.of(SystemUtils.USER_DIR, projectFolderName);
 
-        printVerbose("Project Folder Path: '" + projectFolder.toString() + "'.", options);
+        printVerbose("Project Folder Path: '" + projectFolder.toString() + "'.", context);
 
         try {
             FileUtils.forceMkdir(projectFolder.toFile());
@@ -153,19 +344,19 @@ public class Application {
             printError("Could not create project folder.");
             System.exit(1);
         }
-        printVerbose("Project Folder, '" + projectFolder.toString() + "', created.", options);
+        printVerbose("Project Folder, '" + projectFolder.toString() + "', created.", context);
 
         return projectFolder;
     }
 
-    void createPomFile(Path projectFolder, CommandLineOptions options, Context context) {
+    void createPomFile(Path projectFolder, ApplicationContext applicationContext, Context context) {
 
         processVelocityTemplate("pom.xml", "pom.vty", projectFolder,
-                options, context);
+                applicationContext, context);
     }
 
     void createSrcFolderWithSubFolders(Path projectFolder, Path srcMainJavaPackagePath, Path srcTestJavaPackagePath,
-                                       CommandLineOptions options) {
+                                       ApplicationContext options) {
         printVerbose("Create 'src' folder with sub folders.", options);
         printVerbose("Java source path: '" + srcMainJavaPackagePath.toString() + "', java test path: '" +
                 srcTestJavaPackagePath.toString() + "'.", options);
@@ -187,8 +378,8 @@ public class Application {
         printVerbose("Folder structure: '" + srcTestJavaPackagePath.toString() + "' created.", options);
     }
 
-    void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, CommandLineOptions options, Context context) {
-        printVerbose("Create '" + targetFileName + "' source file.", options);
+    void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, ApplicationContext applicationContext, Context context) {
+        printVerbose("Create '" + targetFileName + "' source file.", applicationContext);
 
         Path targetFilePath = Path.of(targetPath.toString(), targetFileName);
 
@@ -197,14 +388,7 @@ public class Application {
         try
         {
             template = Velocity.getTemplate("templates/" + templateName);
-        }
-        catch( ResourceNotFoundException | ParseErrorException | MethodInvocationException e )
-        {
-            e.printStackTrace();
-            System.exit(1);
-        }
-        catch( Exception e )
-        {
+        } catch( Exception e ) {
             e.printStackTrace();
             System.exit(1);
         }
@@ -219,34 +403,38 @@ public class Application {
     }
 
     void createApplicationSourceFile(Path srcMainJavaPackagePath,
-                                     CommandLineOptions options, Context context) {
+                                     ApplicationContext options, Context context) {
         processVelocityTemplate("Application.java", "Application.vty", srcMainJavaPackagePath,
                 options, context);
     }
 
-    void createApplicationTestSourceFile(Path srcTestJavaPackagePath, CommandLineOptions options, Context context) {
+    void createApplicationTestSourceFile(Path srcTestJavaPackagePath, ApplicationContext options, Context context) {
 
         processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vty", srcTestJavaPackagePath,
                 options, context);
     }
 
-    void createGitFiles(Path projectFolder, String versionName, CommandLineOptions options, Context context) {
-        printVerbose("Create git files.", options);
+    void createGitFiles(Path projectFolder, String versionName, ApplicationContext applicationContext, Context context) {
+        printVerbose("Create git files.", applicationContext);
 
-        if (options.isNoGit()) {
-            printVerbose("--no-git option true. No 'README.md' or '.gitignore' files will be created for the project.", options);
+        if (applicationContext.isNoGit()) {
+            printVerbose("--no-git option true. No 'README.md' or '.gitignore' files will be created for the project.", applicationContext);
             return;
         }
 
         processVelocityTemplate("README.md", "README.vty", projectFolder,
-                options, context);
+                applicationContext, context);
 
         processVelocityTemplate(".gitignore", "gitignore.vty", projectFolder,
-                options, context);
+                applicationContext, context);
     }
 
-    static void printInfo(String message) {
-        System.out.println("[INFO] " + message);
+    static void printInteractive(String message) {
+        System.out.println(message);
+    }
+
+    static void printInteractiveQuestion(String message) {
+        System.out.print(message);
     }
 
     static void printError(String message) {
@@ -255,6 +443,12 @@ public class Application {
 
     void printVerbose(String message, CommandLineOptions options) {
         if (options.isVerbose()) {
+            System.out.println("[VERBOSE] " + message);
+        }
+    }
+
+    void printVerbose(String message, ApplicationContext context) {
+        if (context.isVerbose()) {
             System.out.println("[VERBOSE] " + message);
         }
     }

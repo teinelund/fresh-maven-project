@@ -4,6 +4,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class ApplicationTest {
 
     private Application sut = null;
@@ -14,12 +16,14 @@ public class ApplicationTest {
     }
 
     @Test
-    void executeWhereArgsContainsVersionOption() {
+    void replaceMinusAndUnderscore() {
         // Initialize
-        String[] args = {"-V"};
+        String text = "org.teinelund.order_engine" + "." + "test_2";
+        String expected = "org.teinelund.orderengine.test2";
         // Test
-        // this.sut.execute(args, null);
+        String result = this.sut.replaceMinusAndUnderscore(text);
         // Verify
+        assertThat(result).isEqualTo(expected);
     }
 }
 

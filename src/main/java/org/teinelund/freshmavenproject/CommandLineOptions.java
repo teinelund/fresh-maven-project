@@ -17,8 +17,13 @@ public class CommandLineOptions {
     @Parameter(names = { "-n", "--projectName" }, description = "Maven project name. Optional. Default value is the value of artifact id.", order = 3)
     private String projectName = "";
 
+    private String packageName = "";
+
     @Parameter(names = { "--no-git" }, description = "Don't include .gitignore and README.md files in project.", order = 4)
     private boolean noGit = false;
+
+    @Parameter(names = { "-i", "--interactive" }, description = "Interactive mode.", order = 4)
+    private boolean interactive = false;
 
     @Parameter(names = { "-v", "--verbose" }, description = "Verbose output.", order = 50)
     private boolean verbose = false;
@@ -43,20 +48,40 @@ public class CommandLineOptions {
         return groupid;
     }
 
+    public void setGroupId(String groupid) {
+        this.groupid = groupid;
+    }
+
     public String getArtifactId() {
         return artifactId;
+    }
+
+    public void setArtifactId(String artifactId) {
+        this.artifactId = artifactId;
     }
 
     public String getVersionOfApplication() {
         return versionOfApplication;
     }
 
+    public void setVersionOfApplication(String versionOfApplication) {
+        this.versionOfApplication = versionOfApplication;
+    }
+
     public String getProjectName() {
         return projectName;
     }
 
+    public void setProjectName(String projectName) {
+        this.projectName = projectName;
+    }
+
     public boolean isNoGit() {
         return noGit;
+    }
+
+    public boolean isInteractive() {
+        return interactive;
     }
 
     public boolean isVerbose() {
@@ -73,5 +98,13 @@ public class CommandLineOptions {
 
     public void usage() {
         jc.usage();
+    }
+
+    public void setPackageName(String packageName) {
+        this.packageName = packageName;
+    }
+
+    public String getPackageName() {
+        return this.packageName;
     }
 }
