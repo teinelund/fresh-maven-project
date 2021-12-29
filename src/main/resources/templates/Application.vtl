@@ -42,7 +42,7 @@ public class Application {
             }
             else {
                 String versionString = this.getClass().getPackage().getImplementationVersion();
-                System.out.println("programNameUsedInPrintVersion. Version: " + versionString);
+                System.out.println("${programNameUsedInPrintVersion}. Version: " + versionString);
                 System.out.println("Copyright (c) 2021 Henrik Teinelund.");
             }
             System.exit(0);
@@ -50,7 +50,7 @@ public class Application {
 
         printVerbose("Verbose mode on.");
 
-        System.out.println("Welcome to $programName!");
+        System.out.println("Welcome to ${programNameUsedInPrintVersion}!");
     }
 
     static void printInfo(String message) {

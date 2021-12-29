@@ -44,7 +44,7 @@ public class ApplicationTypes {
         actions.add("LIB");
         at = new ApplicationType("LIB_SLIM", "Slim (no dependencies)", actions);
         list.add(at);
-        applicationTypes.put(Application.TypeOfApplication.COMMAND_LINE_APPLICATION, list);
+        applicationTypes.put(Application.TypeOfApplication.LIBRARY, list);
     }
 
     public List<ApplicationType> getQueries(Application.TypeOfApplication applicationType) {

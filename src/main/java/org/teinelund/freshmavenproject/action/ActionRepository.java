@@ -139,6 +139,10 @@ public class ActionRepository {
         junit = new PomFileDependencyAction(content.toString());
         unit_test_5.addAction(junit);
 
-        actionMap.put("unit test 5", commons_io);
+        actionMap.put("unit test 5", unit_test_5);
+    }
+
+    public Action getAction(String actionName) {
+        return this.actionMap.get(actionName);
     }
 }

@@ -7,6 +7,11 @@ import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
 import org.apache.velocity.context.Context;
+import org.teinelund.freshmavenproject.action.Action;
+import org.teinelund.freshmavenproject.action.ActionRepository;
+import org.teinelund.freshmavenproject.action.ListOfAction;
+import org.teinelund.freshmavenproject.action.PomFileDependencyAction;
+
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +27,8 @@ import java.util.Scanner;
  * Main class
  */
 public class Application {
+
+    private ActionRepository actionRepository = new ActionRepository();
 
     public static void main(String[] args) {
         Application application = new Application();
@@ -52,44 +59,36 @@ public class Application {
         interactiveMode(options, applicationTypes, applicationContext);
         nonInteractiveMode(options, applicationTypes, applicationContext);
 
-        Path projectFolder = createProjectFolder(applicationContext);
+        createProjectFolder(applicationContext);
 
-        String programName = applicationContext.getArtifactId();
-        String projectName = applicationContext.getProjectName();
-        if (!Objects.isNull(projectName) && !projectName.isBlank()) {
-            programName = projectName;
-        }
+        Context velocityContext = initializeVelocity(applicationContext);
 
+        printVerbose("Project name: '" + applicationContext.getProjectName() + "', packageName: '" + applicationContext.getPackageName() +
+                "'.", applicationContext);
 
-        String packageName = applicationContext.getGroupId().replaceAll("-", "").replaceAll("_", "") +
-                "." + applicationContext.getArtifactId().replaceAll("-", "").replaceAll("_", "");
+        createPomFile(applicationContext, velocityContext);
 
-        String programNameUsedInPrintVersion = createProgramNameUsedInPrintVersion(programName);
-
-        Context velocityContext = initializeVelocity(programName, programNameUsedInPrintVersion, packageName, applicationContext);
-
-        printVerbose("Project name: '" + programName + "', packageName: '" + packageName + "'.", applicationContext);
-
-        createPomFile(projectFolder, applicationContext, velocityContext);
-
-        String[] folderNames = packageName.split("\\.");
+        String[] folderNames = applicationContext.getPackageName().split("\\.");
         printVerbose("Folder names: " + Arrays.toString(folderNames) + ".", applicationContext);
-        Path srcMainJava = Path.of(projectFolder.toString(), "src", "main", "java");
+        Path srcMainJava = Path.of(applicationContext.getProjectFolder().toString(), "src", "main", "java");
         Path srcMainJavaPackagePath = Path.of(srcMainJava.toString(), folderNames);
-        Path srcTestJava = Path.of(projectFolder.toString(), "src", "test", "java");
+        Path srcTestJava = Path.of(applicationContext.getProjectFolder().toString(), "src", "test", "java");
         Path srcTestJavaPackagePath = Path.of(srcTestJava.toString(), folderNames);
 
-        createSrcFolderWithSubFolders(projectFolder, srcMainJavaPackagePath, srcTestJavaPackagePath, applicationContext);
+        createSrcFolderWithSubFolders(applicationContext.getProjectFolder(), srcMainJavaPackagePath, srcTestJavaPackagePath, applicationContext);
 
         createApplicationSourceFile(srcMainJavaPackagePath, applicationContext, velocityContext);
 
         createApplicationTestSourceFile(srcTestJavaPackagePath, applicationContext, velocityContext);
 
-        createGitFiles(projectFolder, programNameUsedInPrintVersion, applicationContext, velocityContext);
+        createGitFiles(applicationContext.getProjectFolder(), applicationContext.getProgramNameUsedInPrintVersion(), applicationContext, velocityContext);
     }
 
     void interactiveMode(CommandLineOptions options, ApplicationTypes applicationTypes, ApplicationContext context) {
         if (options.isInteractive()) {
+
+            context.setVerbose(options.isVerbose());
+
             printInteractive("Interactive mode.");
             printInteractive("In this mode you type all the information by hand. First set values to groupId, artifactId, version,");
             printInteractive("and project name. After that choose what type of application you want to build: stand-alone-application");
@@ -106,17 +105,25 @@ public class Application {
             printInteractive("Project name is used as project folder name, 'name' tag in pom file and 'finalName' tag in pom file. ArtifactId is default value.");
             context.setProjectName(interactiveQuery("project name", context.getArtifactId()));
 
+            context.setProgrameNameUsedInPrintVersion(createProgramNameUsedInPrintVersion(context.getProjectName()));
+
             String packageName = replaceMinusAndUnderscore(context.getGroupId() + "." + context.getArtifactId());
             String folderPath = packageName.replaceAll("\\.", "/");
             printInteractive("Root package is (groupId + artifactId): " + packageName + " . This will also produce the folder path");
             printInteractive("\"" + folderPath + "\" in src/main and src/test.");
-            context.setPackageName(interactiveQuery("package name", packageName));
+            String newPackageName = interactiveQuery("package name", packageName);
+            context.setPackageName(newPackageName);
+            context.setFolderPath(folderPath);
+            if (! newPackageName.equals(packageName)) {
+                String newFolderPath = newPackageName.replaceAll("\\.", "/");
+                printInteractive("New folder path will be \"" + newFolderPath + "\" in src/main and src/test.");
+                context.setFolderPath(newFolderPath);
+            }
 
             printInteractive("");
             printInteractive("What kind of application do you want to create?");
             int defaultOptionIndex = 1;
-            TypeOfApplication[] queryOptionsTypeOfApplication = TypeOfApplication.values();
-            TypeOfApplication typeOfApplication = interactiveQueryTypeOfApplication("Type of application", queryOptionsTypeOfApplication, defaultOptionIndex);
+            TypeOfApplication typeOfApplication = interactiveQueryTypeOfApplication("Type of application", TypeOfApplication.values(), defaultOptionIndex);
             context.setTypeOfApplication(typeOfApplication);
             printInteractive("You selected to create a " + typeOfApplication.getDescription() + ".");
             printInteractive("");
@@ -271,19 +278,57 @@ public class Application {
         return queryOptions.get(answerIndex - 1);
     }
 
-    VelocityContext initializeVelocity(String programName, String programNameUsedInPrintVersion, String packageName, ApplicationContext applicationContext) {
+    VelocityContext initializeVelocity(ApplicationContext applicationContext) {
+        printVerbose("Method initializeVelocity:", applicationContext);
+        String dependencies = extractDependencies(applicationContext);
+        printVerbose("  projectName:" + applicationContext.getProjectName(), applicationContext);
+        printVerbose("  programNameUsedInPrintVersion:" + applicationContext.getProgramNameUsedInPrintVersion(), applicationContext);
+        printVerbose("  packageName:" + applicationContext.getPackageName(), applicationContext);
+        printVerbose("  artifactId:" + applicationContext.getArtifactId(), applicationContext);
+        printVerbose("  groupId:" + applicationContext.getGroupId(), applicationContext);
+        printVerbose("  versionOfApplication:" + applicationContext.getVersionOfApplication(), applicationContext);
+        printVerbose("  dependencies:" + dependencies, applicationContext);
         Properties p = new Properties();
         p.setProperty("resource.loader", "class");
         p.setProperty("class.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
         Velocity.init(p);
         VelocityContext context = new VelocityContext();
-        context.put( "programName", programName);
-        context.put( "programNameUsedInPrintVersion", programNameUsedInPrintVersion);
-        context.put( "packageName", packageName);
+        context.put( "projectName", applicationContext.getProjectName());
+        context.put( "programNameUsedInPrintVersion", applicationContext.getProgramNameUsedInPrintVersion());
+        context.put( "packageName", applicationContext.getPackageName());
         context.put( "artifactId", applicationContext.getArtifactId());
         context.put( "groupId", applicationContext.getGroupId());
         context.put( "versionOfApplication", applicationContext.getVersionOfApplication());
+        context.put( "dependencies", dependencies);
         return context;
+    }
+
+    String extractDependencies(ApplicationContext applicationContext) {
+        printVerbose("Method extractDependencies", applicationContext);
+        StringBuilder dependencies = new StringBuilder();
+        for (String actionName : applicationContext.getApplicationType().getActionNames()) {
+            printVerbose("  Action name: " + actionName, applicationContext);
+            Action action = this.actionRepository.getAction(actionName);
+            dependencies.append(extractPomFileDependencyAction(action, applicationContext));
+        }
+        return dependencies.toString();
+    }
+
+    String extractPomFileDependencyAction(Action action, ApplicationContext applicationContext) {
+        StringBuilder dependencies = new StringBuilder();
+        if (action instanceof ListOfAction) {
+            printVerbose("    Action is a ListOfAction", applicationContext);
+            ListOfAction listOfAction = (ListOfAction) action;
+            for (Action action1 : listOfAction) {
+                dependencies.append(extractPomFileDependencyAction(action1, applicationContext));
+            }
+        }
+        else if (action instanceof PomFileDependencyAction) {
+            printVerbose("    Action is a PomFileDependencyAction", applicationContext);
+            PomFileDependencyAction dependencyAction = (PomFileDependencyAction) action;
+            dependencies.append(dependencyAction.getDependencyContent());
+        }
+        return dependencies.toString();
     }
 
     void parseCommandLineOptions(String[] args, CommandLineOptions options) {
@@ -329,7 +374,7 @@ public class Application {
         }
     }
 
-    Path createProjectFolder(ApplicationContext context) {
+    void createProjectFolder(ApplicationContext context) {
         printVerbose("Create Project Folder.", context);
         String projectFolderName = context.getArtifactId();
         if (!Objects.isNull(context.getProjectName()) && !context.getProjectName().isBlank()) {
@@ -347,12 +392,12 @@ public class Application {
         }
         printVerbose("Project Folder, '" + projectFolder.toString() + "', created.", context);
 
-        return projectFolder;
+        context.setProjectFolder(projectFolder);
     }
 
-    void createPomFile(Path projectFolder, ApplicationContext applicationContext, Context context) {
+    void createPomFile(ApplicationContext applicationContext, Context context) {
 
-        processVelocityTemplate("pom.xml", "pom.vtl", projectFolder,
+        processVelocityTemplate("pom.xml", "pom.vtl", applicationContext.getProjectFolder(),
                 applicationContext, context);
     }
 
@@ -442,14 +487,8 @@ public class Application {
         System.out.println("[ERROR] " + message);
     }
 
-    void printVerbose(String message, CommandLineOptions options) {
-        if (options.isVerbose()) {
-            System.out.println("[VERBOSE] " + message);
-        }
-    }
-
-    void printVerbose(String message, ApplicationContext context) {
-        if (context.isVerbose()) {
+    void printVerbose(String message, Verbosable verbosable) {
+        if (verbosable.isVerbose()) {
             System.out.println("[VERBOSE] " + message);
         }
     }

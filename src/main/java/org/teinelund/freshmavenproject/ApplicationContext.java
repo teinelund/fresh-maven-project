@@ -1,17 +1,22 @@
 package org.teinelund.freshmavenproject;
 
 
-public class ApplicationContext {
+import java.nio.file.Path;
+
+public class ApplicationContext implements Verbosable {
 
     private String groupid;
     private String artifactId;
     private String versionOfApplication;
     private String projectName;
     private String packageName;
+    private String folderPath;
+    private Path projectFolder;
     private boolean verbose;
     private Application.TypeOfApplication typeOfApplication;
     private ApplicationType applicationType;
     boolean isNoGit = false;
+    private String programNameUsedInPrintVersion;
 
     public String getGroupId() {
         return groupid;
@@ -83,5 +88,29 @@ public class ApplicationContext {
 
     public boolean isNoGit() {
         return this.isNoGit;
+    }
+
+    public void setFolderPath(String folderPath) {
+        this.folderPath = folderPath;
+    }
+
+    public String getFolderPath() {
+        return folderPath;
+    }
+
+    public void setProjectFolder(Path projectFolder) {
+        this.projectFolder = projectFolder;
+    }
+
+    public Path getProjectFolder() {
+        return projectFolder;
+    }
+
+    public void setProgrameNameUsedInPrintVersion(String programNameUsedInPrintVersion) {
+        this.programNameUsedInPrintVersion = programNameUsedInPrintVersion;
+    }
+
+    public String getProgramNameUsedInPrintVersion() {
+        return programNameUsedInPrintVersion;
     }
 }

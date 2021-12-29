@@ -3,7 +3,7 @@ package org.teinelund.freshmavenproject;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
-public class CommandLineOptions {
+public class CommandLineOptions implements Verbosable {
 
     @Parameter(names = { "-g", "--groupId" }, description = "Maven project group id. Mandatory.", order = 0)
     private String groupid;
