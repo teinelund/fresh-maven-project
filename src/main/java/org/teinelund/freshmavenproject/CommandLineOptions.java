@@ -12,11 +12,12 @@ public class CommandLineOptions implements Verbosable {
     private String artifactId;
 
     @Parameter(names = { "-vp", "--versionOfProject" }, description = "Maven project version. Optional.", order = 2)
-    private String versionOfApplication = "1.0.0-SNAPSHOT";
+    private String versionOfProject = "1.0.0-SNAPSHOT";
 
     @Parameter(names = { "-n", "--projectName" }, description = "Maven project name. Optional. Default value is the value of artifact id.", order = 3)
     private String projectName = "";
 
+    // TODO: @Parameter( ... )
     private String packageName = "";
 
     @Parameter(names = { "--no-git" }, description = "Don't include .gitignore and README.md files in project.", order = 4)
@@ -60,12 +61,12 @@ public class CommandLineOptions implements Verbosable {
         this.artifactId = artifactId;
     }
 
-    public String getVersionOfApplication() {
-        return versionOfApplication;
+    public String getVersionOfProject() {
+        return versionOfProject;
     }
 
-    public void setVersionOfApplication(String versionOfApplication) {
-        this.versionOfApplication = versionOfApplication;
+    public void setVersionOfProject(String versionOfProject) {
+        this.versionOfProject = versionOfProject;
     }
 
     public String getProjectName() {
@@ -96,8 +97,14 @@ public class CommandLineOptions implements Verbosable {
         return help;
     }
 
-    public void usage() {
+    public void printHelp() {
         jc.usage();
+    }
+
+    public void printVersion() {
+        String versionString = this.getClass().getPackage().getImplementationVersion();
+        System.out.println("Fresh Maven Project. Version: " + versionString);
+        System.out.println("Copyright (c) 2021 Henrik Teinelund.");
     }
 
     public void setPackageName(String packageName) {

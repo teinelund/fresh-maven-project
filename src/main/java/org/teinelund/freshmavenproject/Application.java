@@ -33,9 +33,13 @@ public class Application {
     public static void main(String[] args) {
         Application application = new Application();
         CommandLineOptions options = new CommandLineOptions();
+        ApplicationUtils applicationUtils = new ApplicationUtils();
+
+        ApplicationTypes applicationTypes = new ApplicationTypes();
+        ApplicationContext applicationContext = new ApplicationContext();
 
         try {
-            application.execute(args, options);
+            application.execute(args, options, applicationTypes, applicationContext, applicationUtils);
         }
         catch(Exception e) {
             printError(e.getMessage());
@@ -43,19 +47,17 @@ public class Application {
         }
     }
 
-    public void execute(String[] args, CommandLineOptions options) {
+    public void execute(String[] args, CommandLineOptions options,
+                        ApplicationTypes applicationTypes, ApplicationContext applicationContext, ApplicationUtils applicationUtils) {
 
         parseCommandLineOptions(args, options);
 
-        ifHelpOptionOrVersionOption(options);
+        ifHelpOptionOrVersionOption(options, applicationUtils);
 
         printVerbose("Verbose mode on.", options);
 
-        verifyParameters(options);
+        verifyParameters(options, applicationUtils);
 
-        ApplicationTypes applicationTypes = new ApplicationTypes();
-
-        ApplicationContext applicationContext = new ApplicationContext();
         interactiveMode(options, applicationTypes, applicationContext);
         nonInteractiveMode(options, applicationTypes, applicationContext);
 
@@ -63,25 +65,28 @@ public class Application {
 
         Context velocityContext = initializeVelocity(applicationContext);
 
-        printVerbose("Project name: '" + applicationContext.getProjectName() + "', packageName: '" + applicationContext.getPackageName() +
-                "'.", applicationContext);
-
         createPomFile(applicationContext, velocityContext);
 
-        String[] folderNames = applicationContext.getPackageName().split("\\.");
-        printVerbose("Folder names: " + Arrays.toString(folderNames) + ".", applicationContext);
-        Path srcMainJava = Path.of(applicationContext.getProjectFolder().toString(), "src", "main", "java");
-        Path srcMainJavaPackagePath = Path.of(srcMainJava.toString(), folderNames);
-        Path srcTestJava = Path.of(applicationContext.getProjectFolder().toString(), "src", "test", "java");
-        Path srcTestJavaPackagePath = Path.of(srcTestJava.toString(), folderNames);
+        createMavenSourceAndTestPathsAndPackagePaths(applicationContext);
 
-        createSrcFolderWithSubFolders(applicationContext.getProjectFolder(), srcMainJavaPackagePath, srcTestJavaPackagePath, applicationContext);
+        createSrcFolderWithSubFolders(applicationContext);
 
-        createApplicationSourceFile(srcMainJavaPackagePath, applicationContext, velocityContext);
+        createApplicationSourceFile(applicationContext, velocityContext);
 
-        createApplicationTestSourceFile(srcTestJavaPackagePath, applicationContext, velocityContext);
+        createApplicationTestSourceFile(applicationContext, velocityContext);
 
-        createGitFiles(applicationContext.getProjectFolder(), applicationContext.getProgramNameUsedInPrintVersion(), applicationContext, velocityContext);
+        createGitFiles(applicationContext, velocityContext);
+    }
+
+    void createMavenSourceAndTestPathsAndPackagePaths(ApplicationContext context) {
+        String[] folderNames = context.getPackageName().split("\\.");
+        printVerbose("Folder names: " + Arrays.toString(folderNames) + ".", context);
+        Path srcMainJava = Path.of(context.getProjectFolder().toString(), "src", "main", "java");
+        context.setSrcMainJavaPath(srcMainJava);
+        context.setSrcMainJavaPackagePath(Path.of(srcMainJava.toString(), folderNames));
+        Path srcTestJava = Path.of(context.getProjectFolder().toString(), "src", "test", "java");
+        context.setSrcTestJavaPath(srcTestJava);
+        context.setSrcTestJavaPackagePath(Path.of(srcTestJava.toString(), folderNames));
     }
 
     void interactiveMode(CommandLineOptions options, ApplicationTypes applicationTypes, ApplicationContext context) {
@@ -119,6 +124,9 @@ public class Application {
                 printInteractive("New folder path will be \"" + newFolderPath + "\" in src/main and src/test.");
                 context.setFolderPath(newFolderPath);
             }
+
+            printVerbose("Project name: '" + context.getProjectName() + "', packageName: '" +
+                    context.getPackageName() + "'.", context);
 
             printInteractive("");
             printInteractive("What kind of application do you want to create?");
@@ -335,17 +343,15 @@ public class Application {
         options.parse(args);
     }
 
-    private void ifHelpOptionOrVersionOption(CommandLineOptions options) {
+    void ifHelpOptionOrVersionOption(CommandLineOptions options, ApplicationUtils applicationUtils) {
         if (options.isHelp() || options.isVersion()) {
             if (options.isHelp()) {
-                options.usage();
+                options.printHelp();
             }
             else {
-                String versionString = this.getClass().getPackage().getImplementationVersion();
-                System.out.println("Fresh Maven Project. Version: " + versionString);
-                System.out.println("Copyright (c) 2021 Henrik Teinelund.");
+                options.printVersion();
             }
-            System.exit(0);
+            applicationUtils.exit();
         }
     }
 
@@ -359,17 +365,17 @@ public class Application {
         return versionName;
     }
 
-    void verifyParameters(CommandLineOptions options) {
+    void verifyParameters(CommandLineOptions options, ApplicationUtils applicationUtils) {
         printVerbose("Verify Command Line Parameters.", options);
 
         if (!options.isInteractive()) {
             if (Objects.isNull(options.getGroupid()) || options.getGroupid().isBlank()) {
                 printError("Group id is mandatory.");
-                System.exit(1);
+                applicationUtils.exitError();
             }
             if (Objects.isNull(options.getArtifactId()) || options.getArtifactId().isBlank()) {
                 printError("Artifact id is mandatory.");
-                System.exit(1);
+                applicationUtils.exitError();
             }
         }
     }
@@ -377,10 +383,10 @@ public class Application {
     void createProjectFolder(ApplicationContext context) {
         printVerbose("Create Project Folder.", context);
         String projectFolderName = context.getArtifactId();
-        if (!Objects.isNull(context.getProjectName()) && !context.getProjectName().isBlank()) {
+        if (StringUtils.isNotBlank(context.getProjectName())) {
             projectFolderName = context.getProjectName();
         }
-        Path projectFolder = Path.of(SystemUtils.USER_DIR, projectFolderName);
+        Path projectFolder = Path.of(context.getUserDir(), projectFolderName);
 
         printVerbose("Project Folder Path: '" + projectFolder.toString() + "'.", context);
 
@@ -401,27 +407,26 @@ public class Application {
                 applicationContext, context);
     }
 
-    void createSrcFolderWithSubFolders(Path projectFolder, Path srcMainJavaPackagePath, Path srcTestJavaPackagePath,
-                                       ApplicationContext options) {
-        printVerbose("Create 'src' folder with sub folders.", options);
-        printVerbose("Java source path: '" + srcMainJavaPackagePath.toString() + "', java test path: '" +
-                srcTestJavaPackagePath.toString() + "'.", options);
+    void createSrcFolderWithSubFolders(ApplicationContext context) {
+        printVerbose("Create 'src' folder with sub folders.", context);
+        printVerbose("Java source path: '" + context.getSrcMainJavaPackagePath().toString() + "', java test path: '" +
+                context.getSrcTestJavaPackagePath().toString() + "'.", context);
 
         try {
-            FileUtils.forceMkdir(srcMainJavaPackagePath.toFile());
+            FileUtils.forceMkdir(context.getSrcMainJavaPackagePath().toFile());
         } catch (IOException e) {
-            printError("Could not create folder '" + srcMainJavaPackagePath.toString() + "'.");
+            printError("Could not create folder '" + context.getSrcMainJavaPackagePath().toString() + "'.");
             System.exit(1);
         }
-        printVerbose("Folder structure: '" + srcMainJavaPackagePath.toString() + "' created.", options);
+        printVerbose("Folder structure: '" + context.getSrcMainJavaPackagePath().toString() + "' created.", context);
 
         try {
-            FileUtils.forceMkdir(srcTestJavaPackagePath.toFile());
+            FileUtils.forceMkdir(context.getSrcTestJavaPackagePath().toFile());
         } catch (IOException e) {
-            printError("Could not create folder '" + srcTestJavaPackagePath.toString() + "'.");
+            printError("Could not create folder '" + context.getSrcTestJavaPackagePath().toString() + "'.");
             System.exit(1);
         }
-        printVerbose("Folder structure: '" + srcTestJavaPackagePath.toString() + "' created.", options);
+        printVerbose("Folder structure: '" + context.getSrcTestJavaPackagePath().toString() + "' created.", context);
     }
 
     void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, ApplicationContext applicationContext, Context context) {
@@ -448,19 +453,17 @@ public class Application {
         }
     }
 
-    void createApplicationSourceFile(Path srcMainJavaPackagePath,
-                                     ApplicationContext options, Context context) {
-        processVelocityTemplate("Application.java", "Application.vtl", srcMainJavaPackagePath,
-                options, context);
+    void createApplicationSourceFile(ApplicationContext applicationContext, Context velocityContext) {
+        processVelocityTemplate("Application.java", "Application.vtl",
+                applicationContext.getSrcMainJavaPackagePath(), applicationContext, velocityContext);
     }
 
-    void createApplicationTestSourceFile(Path srcTestJavaPackagePath, ApplicationContext options, Context context) {
-
-        processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vtl", srcTestJavaPackagePath,
-                options, context);
+    void createApplicationTestSourceFile(ApplicationContext applicationContext, Context velocityContext) {
+        processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vtl",
+                applicationContext.getSrcTestJavaPackagePath(), applicationContext, velocityContext);
     }
 
-    void createGitFiles(Path projectFolder, String versionName, ApplicationContext applicationContext, Context context) {
+    void createGitFiles(ApplicationContext applicationContext, Context velocityContext) {
         printVerbose("Create git files.", applicationContext);
 
         if (applicationContext.isNoGit()) {
@@ -468,11 +471,11 @@ public class Application {
             return;
         }
 
-        processVelocityTemplate("README.md", "README.vtl", projectFolder,
-                applicationContext, context);
+        processVelocityTemplate("README.md", "README.vtl", applicationContext.getProjectFolder(),
+                applicationContext, velocityContext);
 
-        processVelocityTemplate(".gitignore", "gitignore.vtl", projectFolder,
-                applicationContext, context);
+        processVelocityTemplate(".gitignore", "gitignore.vtl", applicationContext.getProjectFolder(),
+                applicationContext, velocityContext);
     }
 
     static void printInteractive(String message) {

@@ -3,12 +3,37 @@ package org.teinelund.freshmavenproject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 public class ApplicationTest {
 
     private Application sut = null;
+    private static final String expectedVersionOfProject = "1.0.0-SNAPSHOT";
+    private static final String artifactId = "PROJECT_1";
+
+    @Mock
+    private CommandLineOptions options;
+
+    @Mock
+    private ApplicationContext applicationContext;
+
+    @Mock
+    private ApplicationUtils applicationUtils;
 
     @BeforeEach
     void init(TestInfo testInfo) {
@@ -24,6 +49,257 @@ public class ApplicationTest {
         String result = this.sut.replaceMinusAndUnderscore(text);
         // Verify
         assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void parseCommandLineOptionsWhereArgsIsEmpty() {
+        // Initialize
+        String[] args = {};
+        CommandLineOptions options = new CommandLineOptions();
+        // Test
+        this.sut.parseCommandLineOptions(args, options);
+        // Verify
+        assertThat(options.getGroupid()).isBlank();
+        assertThat(options.getArtifactId()).isBlank();
+        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
+        assertThat(options.getProjectName()).isBlank();
+        assertThat(options.getPackageName()).isBlank();
+        assertFalse(options.isNoGit());
+        assertFalse(options.isInteractive());
+        assertFalse(options.isVerbose());
+        assertFalse(options.isVersion());
+        assertFalse(options.isHelp());
+    }
+
+    @Test
+    void parseCommandLineOptionsWhereArgsIsHelpShort() {
+        // Initialize
+        String[] args = {"-h"};
+        CommandLineOptions options = new CommandLineOptions();
+        // Test
+        this.sut.parseCommandLineOptions(args, options);
+        // Verify
+        assertThat(options.getGroupid()).isBlank();
+        assertThat(options.getArtifactId()).isBlank();
+        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
+        assertThat(options.getProjectName()).isBlank();
+        assertThat(options.getPackageName()).isBlank();
+        assertFalse(options.isNoGit());
+        assertFalse(options.isInteractive());
+        assertFalse(options.isVerbose());
+        assertFalse(options.isVersion());
+        assertTrue(options.isHelp());
+    }
+
+    @Test
+    void parseCommandLineOptionsWhereArgsIsHelpLong() {
+        // Initialize
+        String[] args = {"--help"};
+        CommandLineOptions options = new CommandLineOptions();
+        // Test
+        this.sut.parseCommandLineOptions(args, options);
+        // Verify
+        assertThat(options.getGroupid()).isBlank();
+        assertThat(options.getArtifactId()).isBlank();
+        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
+        assertThat(options.getProjectName()).isBlank();
+        assertThat(options.getPackageName()).isBlank();
+        assertFalse(options.isNoGit());
+        assertFalse(options.isInteractive());
+        assertFalse(options.isVerbose());
+        assertFalse(options.isVersion());
+        assertTrue(options.isHelp());
+    }
+
+    @Test
+    void parseCommandLineOptionsWhereArgsIsVersionShort() {
+        // Initialize
+        String[] args = {"-V"};
+        CommandLineOptions options = new CommandLineOptions();
+        // Test
+        this.sut.parseCommandLineOptions(args, options);
+        // Verify
+        assertThat(options.getGroupid()).isBlank();
+        assertThat(options.getArtifactId()).isBlank();
+        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
+        assertThat(options.getProjectName()).isBlank();
+        assertThat(options.getPackageName()).isBlank();
+        assertFalse(options.isNoGit());
+        assertFalse(options.isInteractive());
+        assertFalse(options.isVerbose());
+        assertTrue(options.isVersion());
+        assertFalse(options.isHelp());
+    }
+
+    @Test
+    void parseCommandLineOptionsWhereArgsIsVersionLong() {
+        // Initialize
+        String[] args = {"--version"};
+        CommandLineOptions options = new CommandLineOptions();
+        // Test
+        this.sut.parseCommandLineOptions(args, options);
+        // Verify
+        assertThat(options.getGroupid()).isBlank();
+        assertThat(options.getArtifactId()).isBlank();
+        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
+        assertThat(options.getProjectName()).isBlank();
+        assertThat(options.getPackageName()).isBlank();
+        assertFalse(options.isNoGit());
+        assertFalse(options.isInteractive());
+        assertFalse(options.isVerbose());
+        assertTrue(options.isVersion());
+        assertFalse(options.isHelp());
+    }
+
+    @Test
+    void parseCommandLineOptionsWhereArgsIsVerboseShort() {
+        // Initialize
+        String[] args = {"-v"};
+        CommandLineOptions options = new CommandLineOptions();
+        // Test
+        this.sut.parseCommandLineOptions(args, options);
+        // Verify
+        assertThat(options.getGroupid()).isBlank();
+        assertThat(options.getArtifactId()).isBlank();
+        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
+        assertThat(options.getProjectName()).isBlank();
+        assertThat(options.getPackageName()).isBlank();
+        assertFalse(options.isNoGit());
+        assertFalse(options.isInteractive());
+        assertTrue(options.isVerbose());
+        assertFalse(options.isVersion());
+        assertFalse(options.isHelp());
+    }
+
+    @Test
+    void parseCommandLineOptionsWhereArgsIsVerboseLong() {
+        // Initialize
+        String[] args = {"--verbose"};
+        CommandLineOptions options = new CommandLineOptions();
+        // Test
+        this.sut.parseCommandLineOptions(args, options);
+        // Verify
+        assertThat(options.getGroupid()).isBlank();
+        assertThat(options.getArtifactId()).isBlank();
+        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
+        assertThat(options.getProjectName()).isBlank();
+        assertThat(options.getPackageName()).isBlank();
+        assertFalse(options.isNoGit());
+        assertFalse(options.isInteractive());
+        assertTrue(options.isVerbose());
+        assertFalse(options.isVersion());
+        assertFalse(options.isHelp());
+    }
+
+    @Test
+    void parseCommandLineOptionsWhereArgsIsInteractiveShort() {
+        // Initialize
+        String[] args = {"-i"};
+        CommandLineOptions options = new CommandLineOptions();
+        // Test
+        this.sut.parseCommandLineOptions(args, options);
+        // Verify
+        assertThat(options.getGroupid()).isBlank();
+        assertThat(options.getArtifactId()).isBlank();
+        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
+        assertThat(options.getProjectName()).isBlank();
+        assertThat(options.getPackageName()).isBlank();
+        assertFalse(options.isNoGit());
+        assertTrue(options.isInteractive());
+        assertFalse(options.isVerbose());
+        assertFalse(options.isVersion());
+        assertFalse(options.isHelp());
+    }
+
+    @Test
+    void parseCommandLineOptionsWhereArgsIsInteractiveLong() {
+        // Initialize
+        String[] args = {"--interactive"};
+        CommandLineOptions options = new CommandLineOptions();
+        // Test
+        this.sut.parseCommandLineOptions(args, options);
+        // Verify
+        assertThat(options.getGroupid()).isBlank();
+        assertThat(options.getArtifactId()).isBlank();
+        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
+        assertThat(options.getProjectName()).isBlank();
+        assertThat(options.getPackageName()).isBlank();
+        assertFalse(options.isNoGit());
+        assertTrue(options.isInteractive());
+        assertFalse(options.isVerbose());
+        assertFalse(options.isVersion());
+        assertFalse(options.isHelp());
+    }
+
+    @Test
+    void ifHelpOptionOrVersionOptionWhereHelpAndVersionIsFalse() {
+        // Initialize
+        when(options.isHelp()).thenReturn(false);
+        when(options.isVersion()).thenReturn(false);
+        // Test
+        this.sut.ifHelpOptionOrVersionOption(options, applicationUtils);
+        // Verify
+        verify(options, never()).printHelp();
+        verify(options, never()).printVersion();
+        verify(applicationUtils, never()).exit();
+    }
+
+    @Test
+    void ifHelpOptionOrVersionOptionWhereHelpIsTrue() {
+        // Initialize
+        when(options.isHelp()).thenReturn(true);
+
+        // Unnecessary stubbings detected.
+        // Clean & maintainable test code requires zero unnecessary code.
+        // Following stubbings are unnecessary (click to navigate to relevant line of code):
+        //  1. -> at org.teinelund.freshmavenproject.ApplicationTest.ifHelpOptionOrVersionOptionWhereHelpIsTrue(ApplicationTest.java:240)
+        // Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
+        //
+        // when(options.isVersion()).thenReturn(false);
+
+        // Test
+        this.sut.ifHelpOptionOrVersionOption(options, applicationUtils);
+        // Verify
+        verify(options, times(1)).printHelp();
+        verify(options, never()).printVersion();
+        verify(applicationUtils, times(1)).exit();
+    }
+
+    @Test
+    void ifHelpOptionOrVersionOptionWhereVersionIsTrue() {
+        // Initialize
+        when(options.isHelp()).thenReturn(false);
+        when(options.isVersion()).thenReturn(true);
+        // Test
+        this.sut.ifHelpOptionOrVersionOption(options, applicationUtils);
+        // Verify
+        verify(options, never()).printHelp();
+        verify(options, times(1)).printVersion();
+        verify(applicationUtils, times(1)).exit();
+    }
+
+    @Test
+    void verifyParametersWhereOptionsIsInteractive() {
+        // Initialize
+        when(options.isInteractive()).thenReturn(true);
+        // Test
+        this.sut.verifyParameters(options, applicationUtils);
+        // Verify
+        verify(options, never()).getGroupid();
+        verify(options, never()).getArtifactId();
+        verify(applicationUtils, never()).exitError();
+    }
+
+    @Test
+    void createProjectFolderWhereX(@TempDir Path tempDir) {
+        // Initialize
+        when(applicationContext.getArtifactId()).thenReturn(artifactId);
+        when(applicationContext.getProjectName()).thenReturn(null);
+        when(applicationContext.getUserDir()).thenReturn(tempDir.toString());
+        // Test
+        this.sut.createProjectFolder(applicationContext);
+        // Verify
+        verify(applicationContext, times(1)).setProjectFolder(any());
     }
 }
 

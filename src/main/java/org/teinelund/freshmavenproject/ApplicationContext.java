@@ -1,6 +1,8 @@
 package org.teinelund.freshmavenproject;
 
 
+import org.apache.commons.lang3.SystemUtils;
+
 import java.nio.file.Path;
 
 public class ApplicationContext implements Verbosable {
@@ -17,6 +19,10 @@ public class ApplicationContext implements Verbosable {
     private ApplicationType applicationType;
     boolean isNoGit = false;
     private String programNameUsedInPrintVersion;
+    private Path srcMainJavaPath;
+    private Path srcMainJavaPackagePath;
+    private Path srcTestJavaPath;
+    private Path srcTestJavaPackagePath;
 
     public String getGroupId() {
         return groupid;
@@ -112,5 +118,33 @@ public class ApplicationContext implements Verbosable {
 
     public String getProgramNameUsedInPrintVersion() {
         return programNameUsedInPrintVersion;
+    }
+
+    public void setSrcMainJavaPath(Path srcMainJavaPath) {
+        this.srcMainJavaPath = srcMainJavaPath;
+    }
+
+    public void setSrcTestJavaPath(Path srcTestJavaPath) {
+        this.srcTestJavaPath = srcTestJavaPath;
+    }
+
+    public void setSrcMainJavaPackagePath(Path srcMainJavaPackagePath) {
+        this.srcMainJavaPackagePath = srcMainJavaPackagePath;
+    }
+
+    public void setSrcTestJavaPackagePath(Path srcTestJavaPackagePath) {
+        this.srcTestJavaPackagePath = srcTestJavaPackagePath;
+    }
+
+    public Path getSrcMainJavaPackagePath() {
+        return this.srcMainJavaPackagePath;
+    }
+
+    public Path getSrcTestJavaPackagePath() {
+        return this.srcTestJavaPackagePath;
+    }
+
+    public String getUserDir() {
+        return SystemUtils.USER_DIR;
     }
 }
