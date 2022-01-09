@@ -3,6 +3,15 @@ package org.teinelund.freshmavenproject.action;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * ActionRepository contains all Action objects. Given an action name, the repository gives
+ * the corresponding Action object. An action can be a specific pom file dependency,
+ * a file, a folder path and more.
+ *
+ * Which actions to fetch is governed by ApplicationTypes and the ApplicationType a user
+ * wants. The ApplicationType is stored in the ApplicationContext and is set in the
+ * interactiveMode() method in Application class.
+ */
 public class ActionRepository {
 
     private Map<String, Action> actionMap = new HashMap<>();

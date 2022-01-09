@@ -17,7 +17,8 @@ import java.util.Map;
  * This class is used in the interactive mode. It is used to list all kinds of application
  * types. When a user selects one, the ApplicationType is stored in the ApplicationContext.
  *
- * The ApplicationType is later used to iterate the action names to fetch Action objects.
+ * The ApplicationType is later used to iterate the action names to fetch Action objects
+ * from the ActionRepository.
  */
 public class ApplicationTypes {
 

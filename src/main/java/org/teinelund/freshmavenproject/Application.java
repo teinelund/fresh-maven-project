@@ -2,7 +2,6 @@ package org.teinelund.freshmavenproject;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
@@ -28,18 +27,17 @@ import java.util.Scanner;
  */
 public class Application {
 
-    private ActionRepository actionRepository = new ActionRepository();
-
     public static void main(String[] args) {
         Application application = new Application();
         CommandLineOptions options = new CommandLineOptions();
         ApplicationUtils applicationUtils = new ApplicationUtils();
 
         ApplicationTypes applicationTypes = new ApplicationTypes();
+        ActionRepository actionRepository = new ActionRepository();
         ApplicationContext applicationContext = new ApplicationContext();
 
         try {
-            application.execute(args, options, applicationTypes, applicationContext, applicationUtils);
+            application.execute(args, options, applicationTypes, actionRepository, applicationContext, applicationUtils);
         }
         catch(Exception e) {
             printError(e.getMessage());
@@ -48,7 +46,8 @@ public class Application {
     }
 
     public void execute(String[] args, CommandLineOptions options,
-                        ApplicationTypes applicationTypes, ApplicationContext applicationContext, ApplicationUtils applicationUtils) {
+                        ApplicationTypes applicationTypes, ActionRepository actionRepository,
+                        ApplicationContext applicationContext, ApplicationUtils applicationUtils) {
 
         parseCommandLineOptions(args, options);
 
@@ -63,7 +62,7 @@ public class Application {
 
         createProjectFolder(applicationContext);
 
-        Context velocityContext = initializeVelocity(applicationContext);
+        Context velocityContext = initializeVelocity(applicationContext, actionRepository);
 
         createPomFile(applicationContext, velocityContext);
 
@@ -286,9 +285,9 @@ public class Application {
         return queryOptions.get(answerIndex - 1);
     }
 
-    VelocityContext initializeVelocity(ApplicationContext applicationContext) {
+    VelocityContext initializeVelocity(ApplicationContext applicationContext, ActionRepository actionRepository) {
         printVerbose("Method initializeVelocity:", applicationContext);
-        String dependencies = extractDependencies(applicationContext);
+        String dependencies = extractDependencies(applicationContext, actionRepository);
         printVerbose("  projectName:" + applicationContext.getProjectName(), applicationContext);
         printVerbose("  programNameUsedInPrintVersion:" + applicationContext.getProgramNameUsedInPrintVersion(), applicationContext);
         printVerbose("  packageName:" + applicationContext.getPackageName(), applicationContext);
@@ -311,12 +310,12 @@ public class Application {
         return context;
     }
 
-    String extractDependencies(ApplicationContext applicationContext) {
+    String extractDependencies(ApplicationContext applicationContext, ActionRepository actionRepository) {
         printVerbose("Method extractDependencies", applicationContext);
         StringBuilder dependencies = new StringBuilder();
         for (String actionName : applicationContext.getApplicationType().getActionNames()) {
             printVerbose("  Action name: " + actionName, applicationContext);
-            Action action = this.actionRepository.getAction(actionName);
+            Action action = actionRepository.getAction(actionName);
             dependencies.append(extractPomFileDependencyAction(action, applicationContext));
         }
         return dependencies.toString();

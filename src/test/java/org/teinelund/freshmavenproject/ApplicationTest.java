@@ -7,8 +7,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.teinelund.freshmavenproject.action.Action;
+import org.teinelund.freshmavenproject.action.ActionRepository;
+import org.teinelund.freshmavenproject.action.FolderPathAction;
+import org.teinelund.freshmavenproject.action.ListOfAction;
+import org.teinelund.freshmavenproject.action.PomFileDependencyAction;
 
 import java.nio.file.Path;
+import java.util.LinkedList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,6 +32,11 @@ public class ApplicationTest {
     private Application sut = null;
     private static final String expectedVersionOfProject = "1.0.0-SNAPSHOT";
     private static final String artifactId = "PROJECT_1";
+    static final String dependencyContent = "CONTENT";
+    private static final String dependencyContent2 = "CONTENT2";
+    private static final String folderPath = "FOLDER_PATH";
+    private static final String action1 = "ACTION_1";
+    private static final String action2 = "ACTION_2";
 
     @Mock
     private CommandLineOptions options;
@@ -34,6 +46,9 @@ public class ApplicationTest {
 
     @Mock
     private ApplicationUtils applicationUtils;
+
+    @Mock
+    private ActionRepository actionRepository;
 
     @BeforeEach
     void init(TestInfo testInfo) {
@@ -301,6 +316,67 @@ public class ApplicationTest {
         // Verify
         verify(applicationContext, times(1)).setProjectFolder(any());
     }
+
+    @Test
+    void extractPomFileDependencyActionWhereActionIsPomFileDependencyAction() {
+        // Initialize
+        Action action = new PomFileDependencyAction(dependencyContent);
+        String expected = dependencyContent;
+        // Test
+        String result = this.sut.extractPomFileDependencyAction(action, applicationContext);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void extractPomFileDependencyActionWhereActionIsListOfAction() {
+        // Initialize
+        ListOfAction action = new ListOfAction();
+        Action action1 = new PomFileDependencyAction(dependencyContent);
+        action.addAction(action1);
+        Action action2 = new PomFileDependencyAction(dependencyContent2);
+        action.addAction(action2);
+        String expected = dependencyContent + dependencyContent2;
+        // Test
+        String result = this.sut.extractPomFileDependencyAction(action, applicationContext);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void extractPomFileDependencyActionWhereActionIsFolderPathAction() {
+        // Initialize
+        Action action = new FolderPathAction(folderPath);
+        // Test
+        String result = this.sut.extractPomFileDependencyAction(action, applicationContext);
+        // Verify
+        assertThat(result).isBlank();
+    }
+
+    @Test
+    void extractDependenciesWhereX() {
+        // Initialize
+        Application sut = new ApplicationEx();
+        List<String> actionList = new LinkedList<>();
+        actionList.add(action1);
+        actionList.add(action2);
+        ApplicationType applicationType = new ApplicationType("NAME", "DESCRIPTION", actionList);
+        when(applicationContext.getApplicationType()).thenReturn(applicationType);
+        when(actionRepository.getAction(action1)).thenReturn(new PomFileDependencyAction(dependencyContent));
+        when(actionRepository.getAction(action2)).thenReturn(new PomFileDependencyAction(dependencyContent));
+        String expected = dependencyContent + dependencyContent;
+        // Test
+        String result = sut.extractDependencies(applicationContext, actionRepository);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
 }
 
 
+class ApplicationEx extends Application {
+
+    @Override
+    String extractPomFileDependencyAction(Action action, ApplicationContext applicationContext) {
+        return ApplicationTest.dependencyContent;
+    }
+}
