@@ -1,11 +1,13 @@
 package org.teinelund.freshmavenproject;
 
+import org.apache.velocity.context.Context;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.teinelund.freshmavenproject.action.Action;
 import org.teinelund.freshmavenproject.action.ActionRepository;
@@ -21,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -49,6 +52,9 @@ public class ApplicationTest {
 
     @Mock
     private ActionRepository actionRepository;
+
+    @Spy
+    private Application sutSpy = new Application();
 
     @BeforeEach
     void init(TestInfo testInfo) {
@@ -354,9 +360,9 @@ public class ApplicationTest {
     }
 
     @Test
-    void extractDependenciesWhereX() {
+    void extractDependencies() {
         // Initialize
-        Application sut = new ApplicationEx();
+        doReturn(dependencyContent).when(sutSpy).extractPomFileDependencyAction(any(), any());
         List<String> actionList = new LinkedList<>();
         actionList.add(action1);
         actionList.add(action2);
@@ -366,17 +372,18 @@ public class ApplicationTest {
         when(actionRepository.getAction(action2)).thenReturn(new PomFileDependencyAction(dependencyContent));
         String expected = dependencyContent + dependencyContent;
         // Test
-        String result = sut.extractDependencies(applicationContext, actionRepository);
+        String result = this.sutSpy.extractDependencies(applicationContext, actionRepository);
         // Verify
         assertThat(result).isEqualTo(expected);
     }
-}
 
-
-class ApplicationEx extends Application {
-
-    @Override
-    String extractPomFileDependencyAction(Action action, ApplicationContext applicationContext) {
-        return ApplicationTest.dependencyContent;
+    @Test
+    void initializeVelocity() {
+        // Initialize
+        doReturn(dependencyContent).when(sutSpy).extractDependencies(any(), any());
+        // Test
+        Context velocityContext = this.sutSpy.initializeVelocity(applicationContext, actionRepository);
+        // Verify
+        assertThat(velocityContext).isNotNull();
     }
 }
