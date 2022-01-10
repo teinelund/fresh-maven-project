@@ -1,6 +1,10 @@
 package org.teinelund.freshmavenproject;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.Velocity;
 import org.apache.velocity.context.Context;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -15,9 +19,14 @@ import org.teinelund.freshmavenproject.action.FolderPathAction;
 import org.teinelund.freshmavenproject.action.ListOfAction;
 import org.teinelund.freshmavenproject.action.PomFileDependencyAction;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -40,6 +49,8 @@ public class ApplicationTest {
     private static final String folderPath = "FOLDER_PATH";
     private static final String action1 = "ACTION_1";
     private static final String action2 = "ACTION_2";
+    private static Context context;
+    private static final String programNameUsedInPrintVersion = "PROGRAM_NAME";
 
     @Mock
     private CommandLineOptions options;
@@ -55,6 +66,11 @@ public class ApplicationTest {
 
     @Spy
     private Application sutSpy = new Application();
+
+    @BeforeAll
+    static void initUnitTestSuite() {
+        context = initializeVelocityForUnitTests();
+    }
 
     @BeforeEach
     void init(TestInfo testInfo) {
@@ -385,5 +401,30 @@ public class ApplicationTest {
         Context velocityContext = this.sutSpy.initializeVelocity(applicationContext, actionRepository);
         // Verify
         assertThat(velocityContext).isNotNull();
+    }
+
+    @Test
+    void processVelocityTemplate(@TempDir Path tempDir) throws IOException {
+        // Initialize
+        String targetFileName = "Application.java";
+        String templateName = "Application.vtl";
+        // Test
+        this.sut.processVelocityTemplate(targetFileName, templateName, tempDir, applicationContext, context, applicationUtils);
+        // Verify
+        Path pathToApplicationJava = Paths.get(tempDir.toString(), targetFileName);
+        assertThat(Files.exists(pathToApplicationJava)).isTrue();
+        String content = FileUtils.readFileToString(pathToApplicationJava.toFile(), StandardCharsets.UTF_8);
+        assertThat(content).contains("System.out.println(\"" + programNameUsedInPrintVersion + ". Version: ");
+        assertThat(content).contains("System.out.println(\"Welcome to " + programNameUsedInPrintVersion + "!\");");
+    }
+
+    static VelocityContext initializeVelocityForUnitTests() {
+        Properties p = new Properties();
+        p.setProperty("resource.loader", "class");
+        p.setProperty("class.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
+        Velocity.init(p);
+        VelocityContext context = new VelocityContext();
+        context.put( "programNameUsedInPrintVersion", programNameUsedInPrintVersion);
+        return context;
     }
 }

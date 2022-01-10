@@ -64,17 +64,17 @@ public class Application {
 
         Context velocityContext = initializeVelocity(applicationContext, actionRepository);
 
-        createPomFile(applicationContext, velocityContext);
+        createPomFile(applicationContext, velocityContext, applicationUtils);
 
         createMavenSourceAndTestPathsAndPackagePaths(applicationContext);
 
         createSrcFolderWithSubFolders(applicationContext);
 
-        createApplicationSourceFile(applicationContext, velocityContext);
+        createApplicationSourceFile(applicationContext, velocityContext, applicationUtils);
 
-        createApplicationTestSourceFile(applicationContext, velocityContext);
+        createApplicationTestSourceFile(applicationContext, velocityContext, applicationUtils);
 
-        createGitFiles(applicationContext, velocityContext);
+        createGitFiles(applicationContext, velocityContext, applicationUtils);
     }
 
     void createMavenSourceAndTestPathsAndPackagePaths(ApplicationContext context) {
@@ -400,10 +400,10 @@ public class Application {
         context.setProjectFolder(projectFolder);
     }
 
-    void createPomFile(ApplicationContext applicationContext, Context context) {
+    void createPomFile(ApplicationContext applicationContext, Context context, ApplicationUtils applicationUtils) {
 
         processVelocityTemplate("pom.xml", "pom.vtl", applicationContext.getProjectFolder(),
-                applicationContext, context);
+                applicationContext, context, applicationUtils);
     }
 
     void createSrcFolderWithSubFolders(ApplicationContext context) {
@@ -428,7 +428,8 @@ public class Application {
         printVerbose("Folder structure: '" + context.getSrcTestJavaPackagePath().toString() + "' created.", context);
     }
 
-    void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, ApplicationContext applicationContext, Context context) {
+    void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, ApplicationContext applicationContext,
+                                 Context context, ApplicationUtils applicationUtils) {
         printVerbose("Create '" + targetFileName + "' source file.", applicationContext);
 
         Path targetFilePath = Path.of(targetPath.toString(), targetFileName);
@@ -440,7 +441,7 @@ public class Application {
             template = Velocity.getTemplate("templates/" + templateName);
         } catch( Exception e ) {
             e.printStackTrace();
-            System.exit(1);
+            applicationUtils.exitError();
         }
         try {
             StringWriter targetFileContent = new StringWriter();
@@ -448,21 +449,21 @@ public class Application {
             FileUtils.write(targetFilePath.toFile(), targetFileContent.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             printError("Could not create '" + targetFileName + "' file.");
-            System.exit(1);
+            applicationUtils.exitError();
         }
     }
 
-    void createApplicationSourceFile(ApplicationContext applicationContext, Context velocityContext) {
+    void createApplicationSourceFile(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
         processVelocityTemplate("Application.java", "Application.vtl",
-                applicationContext.getSrcMainJavaPackagePath(), applicationContext, velocityContext);
+                applicationContext.getSrcMainJavaPackagePath(), applicationContext, velocityContext, applicationUtils);
     }
 
-    void createApplicationTestSourceFile(ApplicationContext applicationContext, Context velocityContext) {
+    void createApplicationTestSourceFile(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
         processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vtl",
-                applicationContext.getSrcTestJavaPackagePath(), applicationContext, velocityContext);
+                applicationContext.getSrcTestJavaPackagePath(), applicationContext, velocityContext, applicationUtils);
     }
 
-    void createGitFiles(ApplicationContext applicationContext, Context velocityContext) {
+    void createGitFiles(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
         printVerbose("Create git files.", applicationContext);
 
         if (applicationContext.isNoGit()) {
@@ -471,10 +472,10 @@ public class Application {
         }
 
         processVelocityTemplate("README.md", "README.vtl", applicationContext.getProjectFolder(),
-                applicationContext, velocityContext);
+                applicationContext, velocityContext, applicationUtils);
 
         processVelocityTemplate(".gitignore", "gitignore.vtl", applicationContext.getProjectFolder(),
-                applicationContext, velocityContext);
+                applicationContext, velocityContext, applicationUtils);
     }
 
     static void printInteractive(String message) {
