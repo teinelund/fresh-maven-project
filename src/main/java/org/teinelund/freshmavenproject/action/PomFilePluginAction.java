@@ -1,14 +1,8 @@
 package org.teinelund.freshmavenproject.action;
 
-public class PomFilePluginAction implements Action {
-
-    private String pluginContent;
+public class PomFilePluginAction extends AbstractAction {
 
     public PomFilePluginAction(String pluginContent) {
-        this.pluginContent = pluginContent;
-    }
-
-    public String getPluginContent() {
-        return pluginContent;
+        super(pluginContent);
     }
 }

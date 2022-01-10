@@ -18,6 +18,7 @@ import org.teinelund.freshmavenproject.action.ActionRepository;
 import org.teinelund.freshmavenproject.action.FolderPathAction;
 import org.teinelund.freshmavenproject.action.ListOfAction;
 import org.teinelund.freshmavenproject.action.PomFileDependencyAction;
+import org.teinelund.freshmavenproject.action.PomFilePropertyAction;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -328,7 +329,7 @@ public class ApplicationTest {
     }
 
     @Test
-    void createProjectFolderWhereX(@TempDir Path tempDir) {
+    void createProjectFolder(@TempDir Path tempDir) {
         // Initialize
         when(applicationContext.getArtifactId()).thenReturn(artifactId);
         when(applicationContext.getProjectName()).thenReturn(null);
@@ -340,18 +341,31 @@ public class ApplicationTest {
     }
 
     @Test
-    void extractPomFileDependencyActionWhereActionIsPomFileDependencyAction() {
+    void extractSpecificActionContentWhereActionIsPomFileDependencyAction() {
         // Initialize
         Action action = new PomFileDependencyAction(dependencyContent);
         String expected = dependencyContent;
         // Test
-        String result = this.sut.extractPomFileDependencyAction(action, applicationContext);
+        String result = this.sut.extractSpecificActionContent(action, applicationContext,
+                Application.PomFileDependencyActionClassName);
         // Verify
         assertThat(result).isEqualTo(expected);
     }
 
     @Test
-    void extractPomFileDependencyActionWhereActionIsListOfAction() {
+    void extractSpecificActionContentWhereActionIsPomFilePropertyAction() {
+        // Initialize
+        Action action = new PomFilePropertyAction(dependencyContent);
+        String expected = dependencyContent;
+        // Test
+        String result = this.sut.extractSpecificActionContent(action, applicationContext,
+                Application.PomFilePropertyActionClassName);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void extractSpecificActionContentWhereActionIsListOfAction() {
         // Initialize
         ListOfAction action = new ListOfAction();
         Action action1 = new PomFileDependencyAction(dependencyContent);
@@ -360,17 +374,19 @@ public class ApplicationTest {
         action.addAction(action2);
         String expected = dependencyContent + dependencyContent2;
         // Test
-        String result = this.sut.extractPomFileDependencyAction(action, applicationContext);
+        String result = this.sut.extractSpecificActionContent(action, applicationContext,
+                Application.PomFileDependencyActionClassName);
         // Verify
         assertThat(result).isEqualTo(expected);
     }
 
     @Test
-    void extractPomFileDependencyActionWhereActionIsFolderPathAction() {
+    void extractSpecificActionContentWhereActionIsFolderPathActionButExpectedIsPomFileDependencyAction() {
         // Initialize
         Action action = new FolderPathAction(folderPath);
         // Test
-        String result = this.sut.extractPomFileDependencyAction(action, applicationContext);
+        String result = this.sut.extractSpecificActionContent(action, applicationContext,
+                Application.PomFileDependencyActionClassName);
         // Verify
         assertThat(result).isBlank();
     }
@@ -378,7 +394,7 @@ public class ApplicationTest {
     @Test
     void extractDependencies() {
         // Initialize
-        doReturn(dependencyContent).when(sutSpy).extractPomFileDependencyAction(any(), any());
+        doReturn(dependencyContent).when(sutSpy).extractSpecificActionContent(any(), any(), any());
         List<String> actionList = new LinkedList<>();
         actionList.add(action1);
         actionList.add(action2);
@@ -388,7 +404,8 @@ public class ApplicationTest {
         when(actionRepository.getAction(action2)).thenReturn(new PomFileDependencyAction(dependencyContent));
         String expected = dependencyContent + dependencyContent;
         // Test
-        String result = this.sutSpy.extractDependencies(applicationContext, actionRepository);
+        String result = this.sutSpy.extractApplicationTypeContent(applicationContext, actionRepository,
+                Application.PomFileDependencyActionClassName);
         // Verify
         assertThat(result).isEqualTo(expected);
     }
@@ -396,7 +413,7 @@ public class ApplicationTest {
     @Test
     void initializeVelocity() {
         // Initialize
-        doReturn(dependencyContent).when(sutSpy).extractDependencies(any(), any());
+        doReturn(dependencyContent).when(sutSpy).extractApplicationTypeContent(any(), any(), any());
         // Test
         Context velocityContext = this.sutSpy.initializeVelocity(applicationContext, actionRepository);
         // Verify

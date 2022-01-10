@@ -114,7 +114,7 @@ public class ActionRepository {
                 "            <version>${junit.jupiter.version}</version>\n" +
                 "            <scope>test</scope>\n" +
                 "        </dependency>\n");
-        PomFileDependencyAction junit = new PomFileDependencyAction(content.toString());
+        Action junit = new PomFileDependencyAction(content.toString());
         unit_test_5.addAction(junit);
 
         content = new StringBuilder();
@@ -125,6 +125,11 @@ public class ActionRepository {
                 "            <scope>test</scope>\n" +
                 "        </dependency>\n");
         junit = new PomFileDependencyAction(content.toString());
+        unit_test_5.addAction(junit);
+
+        content = new StringBuilder();
+        content.append("        <junit.jupiter.version>5.8.1</junit.jupiter.version>\n");
+        junit = new PomFilePropertyAction(content.toString());
         unit_test_5.addAction(junit);
 
         content = new StringBuilder();

@@ -1,14 +1,9 @@
 package org.teinelund.freshmavenproject.action;
 
-public class FolderPathAction implements Action {
-
-    private String folderPath;
+public class FolderPathAction extends AbstractAction {
 
     public FolderPathAction(String folderPath) {
-        this.folderPath = folderPath;
+        super(folderPath);
     }
 
-    public String getFolderPath() {
-        return folderPath;
-    }
 }

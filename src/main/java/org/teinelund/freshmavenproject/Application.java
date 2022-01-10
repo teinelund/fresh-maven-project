@@ -6,6 +6,7 @@ import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
 import org.apache.velocity.context.Context;
+import org.teinelund.freshmavenproject.action.AbstractAction;
 import org.teinelund.freshmavenproject.action.Action;
 import org.teinelund.freshmavenproject.action.ActionRepository;
 import org.teinelund.freshmavenproject.action.ListOfAction;
@@ -26,6 +27,9 @@ import java.util.Scanner;
  * Main class
  */
 public class Application {
+
+    public static final String PomFileDependencyActionClassName = "org.teinelund.freshmavenproject.action.PomFileDependencyAction";
+    public static final String PomFilePropertyActionClassName = "org.teinelund.freshmavenproject.action.PomFilePropertyAction";
 
     public static void main(String[] args) {
         Application application = new Application();
@@ -287,7 +291,11 @@ public class Application {
 
     VelocityContext initializeVelocity(ApplicationContext applicationContext, ActionRepository actionRepository) {
         printVerbose("Method initializeVelocity:", applicationContext);
-        String dependencies = extractDependencies(applicationContext, actionRepository);
+        String dependencies = extractApplicationTypeContent(applicationContext, actionRepository, PomFileDependencyActionClassName);
+        String properties = extractApplicationTypeContent(applicationContext, actionRepository, PomFilePropertyActionClassName);
+        if (Objects.nonNull(properties) && StringUtils.isNotBlank(properties)) {
+            properties = "    <properties>\n" + properties + "    </properties>\n";
+        }
         printVerbose("  projectName:" + applicationContext.getProjectName(), applicationContext);
         printVerbose("  programNameUsedInPrintVersion:" + applicationContext.getProgramNameUsedInPrintVersion(), applicationContext);
         printVerbose("  packageName:" + applicationContext.getPackageName(), applicationContext);
@@ -295,6 +303,7 @@ public class Application {
         printVerbose("  groupId:" + applicationContext.getGroupId(), applicationContext);
         printVerbose("  versionOfApplication:" + applicationContext.getVersionOfApplication(), applicationContext);
         printVerbose("  dependencies:" + dependencies, applicationContext);
+        printVerbose("  properties:" + properties, applicationContext);
         Properties p = new Properties();
         p.setProperty("resource.loader", "class");
         p.setProperty("class.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
@@ -307,33 +316,35 @@ public class Application {
         context.put( "groupId", applicationContext.getGroupId());
         context.put( "versionOfApplication", applicationContext.getVersionOfApplication());
         context.put( "dependencies", dependencies);
+        context.put( "properties", properties);
         return context;
     }
 
-    String extractDependencies(ApplicationContext applicationContext, ActionRepository actionRepository) {
-        printVerbose("Method extractDependencies", applicationContext);
+    String extractApplicationTypeContent(ApplicationContext applicationContext, ActionRepository actionRepository, String actionClassName) {
+        printVerbose("Method extractApplicationTypeContent", applicationContext);
         StringBuilder dependencies = new StringBuilder();
         for (String actionName : applicationContext.getApplicationType().getActionNames()) {
             printVerbose("  Action name: " + actionName, applicationContext);
             Action action = actionRepository.getAction(actionName);
-            dependencies.append(extractPomFileDependencyAction(action, applicationContext));
+            dependencies.append(extractSpecificActionContent(action, applicationContext, actionClassName));
         }
         return dependencies.toString();
     }
 
-    String extractPomFileDependencyAction(Action action, ApplicationContext applicationContext) {
+    String extractSpecificActionContent(Action action, ApplicationContext applicationContext, String actionClassName) {
         StringBuilder dependencies = new StringBuilder();
+        String className = action.getClass().getName();
         if (action instanceof ListOfAction) {
             printVerbose("    Action is a ListOfAction", applicationContext);
             ListOfAction listOfAction = (ListOfAction) action;
             for (Action action1 : listOfAction) {
-                dependencies.append(extractPomFileDependencyAction(action1, applicationContext));
+                dependencies.append(extractSpecificActionContent(action1, applicationContext, actionClassName));
             }
         }
-        else if (action instanceof PomFileDependencyAction) {
-            printVerbose("    Action is a PomFileDependencyAction", applicationContext);
-            PomFileDependencyAction dependencyAction = (PomFileDependencyAction) action;
-            dependencies.append(dependencyAction.getDependencyContent());
+        else if (className.equals(actionClassName)) {
+            printVerbose("    Action is a " + actionClassName, applicationContext);
+            AbstractAction dependencyAction = (AbstractAction) action;
+            dependencies.append(dependencyAction.getContent());
         }
         return dependencies.toString();
     }
