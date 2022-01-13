@@ -30,6 +30,7 @@ public class Application {
 
     public static final String PomFileDependencyActionClassName = "org.teinelund.freshmavenproject.action.PomFileDependencyAction";
     public static final String PomFilePropertyActionClassName = "org.teinelund.freshmavenproject.action.PomFilePropertyAction";
+    public static final String PomFilePluginActionClassName = "org.teinelund.freshmavenproject.action.PomFilePluginAction";
 
     public static void main(String[] args) {
         Application application = new Application();
@@ -293,6 +294,7 @@ public class Application {
         printVerbose("Method initializeVelocity:", applicationContext);
         String dependencies = extractApplicationTypeContent(applicationContext, actionRepository, PomFileDependencyActionClassName);
         String properties = extractApplicationTypeContent(applicationContext, actionRepository, PomFilePropertyActionClassName);
+        String plugins = extractApplicationTypeContent(applicationContext, actionRepository, PomFilePluginActionClassName);
         if (Objects.nonNull(properties) && StringUtils.isNotBlank(properties)) {
             properties = "    <properties>\n" + properties + "    </properties>\n";
         }
@@ -315,8 +317,13 @@ public class Application {
         context.put( "artifactId", applicationContext.getArtifactId());
         context.put( "groupId", applicationContext.getGroupId());
         context.put( "versionOfApplication", applicationContext.getVersionOfApplication());
+
+        StringWriter velocityEvaluatedPlugins = new StringWriter();
+        Velocity.evaluate(context, velocityEvaluatedPlugins, "plugins", plugins);
+
         context.put( "dependencies", dependencies);
         context.put( "properties", properties);
+        context.put( "plugins", velocityEvaluatedPlugins.toString());
         return context;
     }
 

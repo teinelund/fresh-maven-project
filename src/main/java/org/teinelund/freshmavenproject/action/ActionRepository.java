@@ -28,6 +28,12 @@ public class ActionRepository {
         // unit test 5
 
         // LIB
+
+
+        //
+        // Plugins
+        //
+
         StringBuilder content = new StringBuilder();
         content.append("            <plugin>\n" +
                 "                <groupId>org.apache.maven.plugins</groupId>\n" +
@@ -69,6 +75,64 @@ public class ActionRepository {
                 "            </plugin>\n");
         PomFilePluginAction cla = new PomFilePluginAction(content.toString());
         actionMap.put("CLA", cla);
+
+        ListOfAction plugins_basic = new ListOfAction();
+
+        content = new StringBuilder();
+        content.append("            <plugin>\n" +
+                "                <groupId>org.apache.maven.plugins</groupId>\n" +
+                "                <artifactId>maven-compiler-plugin</artifactId>\n" +
+                "                <version>3.8.1</version>\n" +
+                "                <configuration>\n" +
+                "                    <source>14</source>\n" +
+                "                    <target>14</target>\n" +
+                "                </configuration>\n" +
+                "            </plugin>\n");
+        Action maven_compiler_plugin = new PomFilePluginAction(content.toString());
+        plugins_basic.addAction(maven_compiler_plugin);
+
+        content = new StringBuilder();
+        content.append("            <plugin>\n" +
+                "                <groupId>org.apache.maven.plugins</groupId>\n" +
+                "                <artifactId>maven-surefire-plugin</artifactId>\n" +
+                "                <version>2.22.2</version>\n" +
+                "            </plugin>\n");
+        Action maven_surefire_plugin = new PomFilePluginAction(content.toString());
+        plugins_basic.addAction(maven_surefire_plugin);
+
+        content = new StringBuilder();
+        content.append("            <plugin>\n" +
+                "                <groupId>org.apache.maven.plugins</groupId>\n" +
+                "                <artifactId>maven-help-plugin</artifactId>\n" +
+                "                <version>3.2.0</version>\n" +
+                "            </plugin>\n");
+        Action maven_help_plugin = new PomFilePluginAction(content.toString());
+        plugins_basic.addAction(maven_help_plugin);
+
+        content = new StringBuilder();
+        content.append("            <plugin>\n" +
+                "                <groupId>org.apache.maven.plugins</groupId>\n" +
+                "                <artifactId>maven-clean-plugin</artifactId>\n" +
+                "                <version>3.1.0</version>\n" +
+                "            </plugin>\n");
+        Action maven_clean_plugin = new PomFilePluginAction(content.toString());
+        plugins_basic.addAction(maven_clean_plugin);
+
+        content = new StringBuilder();
+        content.append("            <plugin>\n" +
+                "                <groupId>org.apache.maven.plugins</groupId>\n" +
+                "                <artifactId>maven-install-plugin</artifactId>\n" +
+                "                <version>2.5.2</version>\n" +
+                "            </plugin>\n");
+        Action maven_install_plugin = new PomFilePluginAction(content.toString());
+        plugins_basic.addAction(maven_install_plugin);
+
+        actionMap.put("plugins_basic", plugins_basic);
+
+
+        //
+        // Dependencies
+        //
 
         content = new StringBuilder();
         content.append("        <dependency>\n" +
