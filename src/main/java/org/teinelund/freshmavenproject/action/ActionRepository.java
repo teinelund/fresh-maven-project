@@ -34,6 +34,11 @@ public class ActionRepository {
         // Plugins
         //
 
+        ListOfAction cla = new ListOfAction();
+        FolderPathAction srcMainJavaPath = new FolderPathAction("src/main/java", "srcMainJavaFolderName");
+        cla.addAction(srcMainJavaPath);
+        FolderPathAction srcTestJavaPath = new FolderPathAction("src/test/java", "srcTestJavaFolderName");
+        cla.addAction(srcTestJavaPath);
         StringBuilder content = new StringBuilder();
         content.append("            <plugin>\n" +
                 "                <groupId>org.apache.maven.plugins</groupId>\n" +
@@ -73,7 +78,8 @@ public class ActionRepository {
                 "                    </execution>\n" +
                 "                </executions>\n" +
                 "            </plugin>\n");
-        PomFilePluginAction cla = new PomFilePluginAction(content.toString());
+        PomFilePluginAction shade_jar_plugins = new PomFilePluginAction(content.toString());
+        cla.addAction(shade_jar_plugins);
         actionMap.put("CLA", cla);
 
         ListOfAction plugins_basic = new ListOfAction();

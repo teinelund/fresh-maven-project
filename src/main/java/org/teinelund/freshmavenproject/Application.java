@@ -9,6 +9,7 @@ import org.apache.velocity.context.Context;
 import org.teinelund.freshmavenproject.action.AbstractAction;
 import org.teinelund.freshmavenproject.action.Action;
 import org.teinelund.freshmavenproject.action.ActionRepository;
+import org.teinelund.freshmavenproject.action.FolderPathAction;
 import org.teinelund.freshmavenproject.action.ListOfAction;
 import org.teinelund.freshmavenproject.action.PomFileDependencyAction;
 
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -69,11 +71,17 @@ public class Application {
 
         Context velocityContext = initializeVelocity(applicationContext, actionRepository);
 
+        // This creates:
+        // * src/main/java
+        // * src/test/java
+        // * optional others as well ...
+        createFolders(applicationContext, velocityContext, applicationUtils, actionRepository);
+
         createPomFile(applicationContext, velocityContext, applicationUtils);
 
-        createMavenSourceAndTestPathsAndPackagePaths(applicationContext);
+        //createMavenSourceAndTestPathsAndPackagePaths(applicationContext);
 
-        createSrcFolderWithSubFolders(applicationContext);
+        //createSrcFolderWithSubFolders(applicationContext);
 
         createApplicationSourceFile(applicationContext, velocityContext, applicationUtils);
 
@@ -82,6 +90,41 @@ public class Application {
         createGitFiles(applicationContext, velocityContext, applicationUtils);
     }
 
+    void createFolders(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
+        printVerbose("Create folders:", applicationContext);
+        for (String actionName : applicationContext.getApplicationType().getActionNames()) {
+            printVerbose("  Action name: " + actionName, applicationContext);
+            Action action = actionRepository.getAction(actionName);
+            createFolder(action, applicationContext, velocityContext);
+        }
+    }
+
+    void createFolder(Action action, ApplicationContext applicationContext, Context velocityContext) {
+        if (action instanceof ListOfAction) {
+            printVerbose("    Action is a ListOfAction", applicationContext);
+            ListOfAction listOfAction = (ListOfAction) action;
+            for (Action action1 : listOfAction) {
+                createFolder(action1, applicationContext, velocityContext);
+            }
+        }
+        else if (action instanceof FolderPathAction) {
+            printVerbose("    Action is a FolderPathAction", applicationContext);
+            FolderPathAction folderPathAction = (FolderPathAction) action;
+            String[] folderPathNameArray = folderPathAction.getContent().split("/");
+            Path folderPath = Path.of(applicationContext.getProjectFolder().toString(), folderPathNameArray);
+            try {
+                FileUtils.forceMkdir(folderPath.toFile());
+            } catch (IOException e) {
+                printError("Could not create folder '" + folderPath.toString() + "'.");
+                System.exit(1);
+            }
+            printVerbose("    Folder structure: '" + folderPath.toString() + "' created.", applicationContext);
+            velocityContext.put( folderPathAction.getPropertyName(), folderPathAction.getContent());
+            applicationContext.putContext( folderPathAction.getPropertyName() + "Path", folderPath);
+        }
+    }
+
+    /*
     void createMavenSourceAndTestPathsAndPackagePaths(ApplicationContext context) {
         String[] folderNames = context.getPackageName().split("\\.");
         printVerbose("Folder names: " + Arrays.toString(folderNames) + ".", context);
@@ -92,6 +135,7 @@ public class Application {
         context.setSrcTestJavaPath(srcTestJava);
         context.setSrcTestJavaPackagePath(Path.of(srcTestJava.toString(), folderNames));
     }
+     */
 
     void interactiveMode(CommandLineOptions options, ApplicationTypes applicationTypes, ApplicationContext context) {
         if (options.isInteractive()) {
@@ -424,6 +468,7 @@ public class Application {
                 applicationContext, context, applicationUtils);
     }
 
+    /*
     void createSrcFolderWithSubFolders(ApplicationContext context) {
         printVerbose("Create 'src' folder with sub folders.", context);
         printVerbose("Java source path: '" + context.getSrcMainJavaPackagePath().toString() + "', java test path: '" +
@@ -445,6 +490,7 @@ public class Application {
         }
         printVerbose("Folder structure: '" + context.getSrcTestJavaPackagePath().toString() + "' created.", context);
     }
+     */
 
     void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, ApplicationContext applicationContext,
                                  Context context, ApplicationUtils applicationUtils) {
@@ -473,12 +519,12 @@ public class Application {
 
     void createApplicationSourceFile(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
         processVelocityTemplate("Application.java", "Application.vtl",
-                applicationContext.getSrcMainJavaPackagePath(), applicationContext, velocityContext, applicationUtils);
+                (Path) applicationContext.getContext("srcMainJavaFolderNamePath"), applicationContext, velocityContext, applicationUtils);
     }
 
     void createApplicationTestSourceFile(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
         processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vtl",
-                applicationContext.getSrcTestJavaPackagePath(), applicationContext, velocityContext, applicationUtils);
+                (Path) applicationContext.getContext("srcTestJavaFolderNamePath"), applicationContext, velocityContext, applicationUtils);
     }
 
     void createGitFiles(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {

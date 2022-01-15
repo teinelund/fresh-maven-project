@@ -2,8 +2,14 @@ package org.teinelund.freshmavenproject.action;
 
 public class FolderPathAction extends AbstractAction {
 
-    public FolderPathAction(String folderPath) {
+    private String propertyName;
+
+    public FolderPathAction(String folderPath, String propertyName) {
         super(folderPath);
+        this.propertyName = propertyName;
     }
 
+    public String getPropertyName() {
+        return propertyName;
+    }
 }

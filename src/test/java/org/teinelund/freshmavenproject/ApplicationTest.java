@@ -48,6 +48,7 @@ public class ApplicationTest {
     static final String dependencyContent = "CONTENT";
     private static final String dependencyContent2 = "CONTENT2";
     private static final String folderPath = "FOLDER_PATH";
+    private static final String propertyName = "PROPERTY_NAME";
     private static final String action1 = "ACTION_1";
     private static final String action2 = "ACTION_2";
     private static Context context;
@@ -383,7 +384,7 @@ public class ApplicationTest {
     @Test
     void extractSpecificActionContentWhereActionIsFolderPathActionButExpectedIsPomFileDependencyAction() {
         // Initialize
-        Action action = new FolderPathAction(folderPath);
+        Action action = new FolderPathAction(folderPath, propertyName);
         // Test
         String result = this.sut.extractSpecificActionContent(action, applicationContext,
                 Application.PomFileDependencyActionClassName);
