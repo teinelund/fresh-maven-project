@@ -327,7 +327,7 @@ public class ApplicationTest {
         // Test
         this.sut.createProjectFolder(applicationContext, applicationUtils);
         // Verify
-        verify(applicationContext, times(1)).setProjectFolder(any());
+        verify(applicationContext, times(1)).putContext(any(), any());
     }
 
     @Test

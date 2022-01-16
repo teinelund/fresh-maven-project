@@ -80,8 +80,6 @@ public class Application {
 
         createPackageFolders(applicationContext, velocityContext, applicationUtils, actionRepository);
 
-        createPomFile(applicationContext, velocityContext, applicationUtils);
-
         createFilesFromActionList(applicationContext, velocityContext, applicationUtils, actionRepository);
 
         createGitFiles(applicationContext, velocityContext, applicationUtils);
@@ -154,8 +152,7 @@ public class Application {
         else if (action instanceof FolderPathAction) {
             applicationUtils.printVerbose("    Action is a FolderPathAction", applicationContext);
             FolderPathAction folderPathAction = (FolderPathAction) action;
-            String[] folderPathNameArray = folderPathAction.getContent().split("/");
-            Path folderPath = Path.of(applicationContext.getProjectFolder().toString(), folderPathNameArray);
+            Path folderPath = Path.of(applicationContext.getContext("projectFolderPath").toString(), folderPathAction.getContent());
             try {
                 FileUtils.forceMkdir(folderPath.toFile());
             } catch (IOException e) {
@@ -302,25 +299,19 @@ public class Application {
         if (StringUtils.isNotBlank(context.getProjectName())) {
             projectFolderName = context.getProjectName();
         }
-        Path projectFolder = Path.of(context.getUserDir(), projectFolderName);
+        Path projectFolderPath = Path.of(context.getUserDir(), projectFolderName);
 
-        applicationUtils.printVerbose("Project Folder Path: '" + projectFolder.toString() + "'.", context);
+        applicationUtils.printVerbose("Project Folder Path: '" + projectFolderPath.toString() + "'.", context);
 
         try {
-            FileUtils.forceMkdir(projectFolder.toFile());
+            FileUtils.forceMkdir(projectFolderPath.toFile());
         } catch (IOException e) {
             applicationUtils.printError("Could not create project folder.");
             System.exit(1);
         }
-        applicationUtils.printVerbose("Project Folder, '" + projectFolder.toString() + "', created.", context);
+        applicationUtils.printVerbose("Project Folder, '" + projectFolderPath.toString() + "', created.", context);
 
-        context.setProjectFolder(projectFolder);
-    }
-
-    void createPomFile(ApplicationContext applicationContext, Context context, ApplicationUtils applicationUtils) {
-
-        processVelocityTemplate("pom.xml", "pom.vtl", applicationContext.getProjectFolder(),
-                applicationContext, context, applicationUtils);
+        context.putContext("projectFolderPath", projectFolderPath);
     }
 
     void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, ApplicationContext applicationContext,
@@ -356,10 +347,10 @@ public class Application {
             return;
         }
 
-        processVelocityTemplate("README.md", "README.vtl", applicationContext.getProjectFolder(),
+        processVelocityTemplate("README.md", "README.vtl", (Path) applicationContext.getContext("projectFolderPath"),
                 applicationContext, velocityContext, applicationUtils);
 
-        processVelocityTemplate(".gitignore", "gitignore.vtl", applicationContext.getProjectFolder(),
+        processVelocityTemplate(".gitignore", "gitignore.vtl", (Path) applicationContext.getContext("projectFolderPath"),
                 applicationContext, velocityContext, applicationUtils);
     }
 }

@@ -15,7 +15,6 @@ public class ApplicationContext implements Verbosable {
     private String projectName;
     private String packageName;
     private String packageFolderPathName;
-    private Path projectFolder;
     private boolean verbose;
     private Application.TypeOfApplication typeOfApplication;
     private ApplicationType applicationType;
@@ -112,14 +111,6 @@ public class ApplicationContext implements Verbosable {
 
     public String getPackageFolderPathName() {
         return packageFolderPathName;
-    }
-
-    public void setProjectFolder(Path projectFolder) {
-        this.projectFolder = projectFolder;
-    }
-
-    public Path getProjectFolder() {
-        return projectFolder;
     }
 
     public void setProgrameNameUsedInPrintVersion(String programNameUsedInPrintVersion) {

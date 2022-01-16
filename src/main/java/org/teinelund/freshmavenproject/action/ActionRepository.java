@@ -39,6 +39,8 @@ public class ActionRepository {
         cla.addAction(srcMainJavaPath);
         FolderPathAction srcTestJavaPath = new FolderPathAction("src/test/java", "srcTestJavaFolderName");
         cla.addAction(srcTestJavaPath);
+        FileAction pomFile = new FileAction("pom.vtl", "pom.xml", "projectFolderPath");
+        cla.addAction(pomFile);
         FileAction applicationFile = new FileAction("Application.vtl", "Application.java", "mainPackageFolderPath");
         cla.addAction(applicationFile);
         FileAction applicationTestFile = new FileAction("ApplicationTest.vtl", "ApplicationTest.java", "testPackageFolderPath");
