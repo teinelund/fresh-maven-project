@@ -11,14 +11,12 @@ import org.teinelund.freshmavenproject.action.Action;
 import org.teinelund.freshmavenproject.action.ActionRepository;
 import org.teinelund.freshmavenproject.action.FolderPathAction;
 import org.teinelund.freshmavenproject.action.ListOfAction;
-import org.teinelund.freshmavenproject.action.PomFileDependencyAction;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -77,17 +75,37 @@ public class Application {
         // * optional others as well ...
         createFolders(applicationContext, velocityContext, applicationUtils, actionRepository);
 
+        createPackageFolders(applicationContext, velocityContext, applicationUtils, actionRepository);
+
         createPomFile(applicationContext, velocityContext, applicationUtils);
-
-        //createMavenSourceAndTestPathsAndPackagePaths(applicationContext);
-
-        //createSrcFolderWithSubFolders(applicationContext);
 
         createApplicationSourceFile(applicationContext, velocityContext, applicationUtils);
 
         createApplicationTestSourceFile(applicationContext, velocityContext, applicationUtils);
 
         createGitFiles(applicationContext, velocityContext, applicationUtils);
+    }
+
+    void createPackageFolders(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
+        printVerbose("Create package folders:", applicationContext);
+        Path path = Paths.get(((Path) applicationContext.getContext("srcMainJavaFolderNamePath")).toString(), applicationContext.getPackageFolderPathName());
+        try {
+            FileUtils.forceMkdir(path.toFile());
+            applicationContext.putContext( "mainPackageFolderPath", path);
+            printVerbose("    Folder structure: '" + path.toString() + "' created.", applicationContext);
+        } catch (IOException e) {
+            printError("Could not create folder '" + path.toString() + "'.");
+            System.exit(1);
+        }
+        path = Paths.get(((Path) applicationContext.getContext("srcTestJavaFolderNamePath")).toString(), applicationContext.getPackageFolderPathName());
+        try {
+            FileUtils.forceMkdir(path.toFile());
+            applicationContext.putContext( "testPackageFolderPath", path);
+            printVerbose("    Folder structure: '" + path.toString() + "' created.", applicationContext);
+        } catch (IOException e) {
+            printError("Could not create folder '" + path.toString() + "'.");
+            System.exit(1);
+        }
     }
 
     void createFolders(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
@@ -124,19 +142,6 @@ public class Application {
         }
     }
 
-    /*
-    void createMavenSourceAndTestPathsAndPackagePaths(ApplicationContext context) {
-        String[] folderNames = context.getPackageName().split("\\.");
-        printVerbose("Folder names: " + Arrays.toString(folderNames) + ".", context);
-        Path srcMainJava = Path.of(context.getProjectFolder().toString(), "src", "main", "java");
-        context.setSrcMainJavaPath(srcMainJava);
-        context.setSrcMainJavaPackagePath(Path.of(srcMainJava.toString(), folderNames));
-        Path srcTestJava = Path.of(context.getProjectFolder().toString(), "src", "test", "java");
-        context.setSrcTestJavaPath(srcTestJava);
-        context.setSrcTestJavaPackagePath(Path.of(srcTestJava.toString(), folderNames));
-    }
-     */
-
     void interactiveMode(CommandLineOptions options, ApplicationTypes applicationTypes, ApplicationContext context) {
         if (options.isInteractive()) {
 
@@ -161,16 +166,16 @@ public class Application {
             context.setProgrameNameUsedInPrintVersion(createProgramNameUsedInPrintVersion(context.getProjectName()));
 
             String packageName = replaceMinusAndUnderscore(context.getGroupId() + "." + context.getArtifactId());
-            String folderPath = packageName.replaceAll("\\.", "/");
+            String packageFolderPathName = packageName.replaceAll("\\.", "/");
             printInteractive("Root package is (groupId + artifactId): " + packageName + " . This will also produce the folder path");
-            printInteractive("\"" + folderPath + "\" in src/main and src/test.");
+            printInteractive("\"" + packageFolderPathName + "\" in src/main/java and src/test/java.");
             String newPackageName = interactiveQuery("package name", packageName);
             context.setPackageName(newPackageName);
-            context.setFolderPath(folderPath);
+            context.setPackageFolderPathName(packageFolderPathName);
             if (! newPackageName.equals(packageName)) {
-                String newFolderPath = newPackageName.replaceAll("\\.", "/");
-                printInteractive("New folder path will be \"" + newFolderPath + "\" in src/main and src/test.");
-                context.setFolderPath(newFolderPath);
+                String newPackageFolderPathName = newPackageName.replaceAll("\\.", "/");
+                printInteractive("New folder path will be \"" + newPackageFolderPathName + "\" in src/main/java and src/test/java.");
+                context.setPackageFolderPathName(newPackageFolderPathName);
             }
 
             printVerbose("Project name: '" + context.getProjectName() + "', packageName: '" +
@@ -468,30 +473,6 @@ public class Application {
                 applicationContext, context, applicationUtils);
     }
 
-    /*
-    void createSrcFolderWithSubFolders(ApplicationContext context) {
-        printVerbose("Create 'src' folder with sub folders.", context);
-        printVerbose("Java source path: '" + context.getSrcMainJavaPackagePath().toString() + "', java test path: '" +
-                context.getSrcTestJavaPackagePath().toString() + "'.", context);
-
-        try {
-            FileUtils.forceMkdir(context.getSrcMainJavaPackagePath().toFile());
-        } catch (IOException e) {
-            printError("Could not create folder '" + context.getSrcMainJavaPackagePath().toString() + "'.");
-            System.exit(1);
-        }
-        printVerbose("Folder structure: '" + context.getSrcMainJavaPackagePath().toString() + "' created.", context);
-
-        try {
-            FileUtils.forceMkdir(context.getSrcTestJavaPackagePath().toFile());
-        } catch (IOException e) {
-            printError("Could not create folder '" + context.getSrcTestJavaPackagePath().toString() + "'.");
-            System.exit(1);
-        }
-        printVerbose("Folder structure: '" + context.getSrcTestJavaPackagePath().toString() + "' created.", context);
-    }
-     */
-
     void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, ApplicationContext applicationContext,
                                  Context context, ApplicationUtils applicationUtils) {
         printVerbose("Create '" + targetFileName + "' source file.", applicationContext);
@@ -519,12 +500,12 @@ public class Application {
 
     void createApplicationSourceFile(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
         processVelocityTemplate("Application.java", "Application.vtl",
-                (Path) applicationContext.getContext("srcMainJavaFolderNamePath"), applicationContext, velocityContext, applicationUtils);
+                (Path) applicationContext.getContext("mainPackageFolderPath"), applicationContext, velocityContext, applicationUtils);
     }
 
     void createApplicationTestSourceFile(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
         processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vtl",
-                (Path) applicationContext.getContext("srcTestJavaFolderNamePath"), applicationContext, velocityContext, applicationUtils);
+                (Path) applicationContext.getContext("testPackageFolderPath"), applicationContext, velocityContext, applicationUtils);
     }
 
     void createGitFiles(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {

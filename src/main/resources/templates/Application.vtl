@@ -22,7 +22,7 @@ public class Application {
 
         JCommander jc = JCommander.newBuilder()
                 .addObject(application)
-                .programName("$programName")
+                .programName("${projectName}")
                 .build();
         jc.parse(args);
 

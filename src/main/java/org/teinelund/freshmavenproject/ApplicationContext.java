@@ -14,7 +14,7 @@ public class ApplicationContext implements Verbosable {
     private String versionOfApplication;
     private String projectName;
     private String packageName;
-    private String folderPath;
+    private String packageFolderPathName;
     private Path projectFolder;
     private boolean verbose;
     private Application.TypeOfApplication typeOfApplication;
@@ -106,12 +106,12 @@ public class ApplicationContext implements Verbosable {
         return this.isNoGit;
     }
 
-    public void setFolderPath(String folderPath) {
-        this.folderPath = folderPath;
+    public void setPackageFolderPathName(String packageFolderPathName) {
+        this.packageFolderPathName = packageFolderPathName;
     }
 
-    public String getFolderPath() {
-        return folderPath;
+    public String getPackageFolderPathName() {
+        return packageFolderPathName;
     }
 
     public void setProjectFolder(Path projectFolder) {
