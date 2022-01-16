@@ -80,17 +80,6 @@ public class ApplicationTest {
     }
 
     @Test
-    void replaceMinusAndUnderscore() {
-        // Initialize
-        String text = "org.teinelund.order_engine" + "." + "test_2";
-        String expected = "org.teinelund.orderengine.test2";
-        // Test
-        String result = this.sut.replaceMinusAndUnderscore(text);
-        // Verify
-        assertThat(result).isEqualTo(expected);
-    }
-
-    @Test
     void parseCommandLineOptionsWhereArgsIsEmpty() {
         // Initialize
         String[] args = {};
@@ -336,7 +325,7 @@ public class ApplicationTest {
         when(applicationContext.getProjectName()).thenReturn(null);
         when(applicationContext.getUserDir()).thenReturn(tempDir.toString());
         // Test
-        this.sut.createProjectFolder(applicationContext);
+        this.sut.createProjectFolder(applicationContext, applicationUtils);
         // Verify
         verify(applicationContext, times(1)).setProjectFolder(any());
     }
@@ -348,7 +337,7 @@ public class ApplicationTest {
         String expected = dependencyContent;
         // Test
         String result = this.sut.extractSpecificActionContent(action, applicationContext,
-                Application.PomFileDependencyActionClassName);
+                Application.PomFileDependencyActionClassName, applicationUtils);
         // Verify
         assertThat(result).isEqualTo(expected);
     }
@@ -360,7 +349,7 @@ public class ApplicationTest {
         String expected = dependencyContent;
         // Test
         String result = this.sut.extractSpecificActionContent(action, applicationContext,
-                Application.PomFilePropertyActionClassName);
+                Application.PomFilePropertyActionClassName, applicationUtils);
         // Verify
         assertThat(result).isEqualTo(expected);
     }
@@ -376,7 +365,7 @@ public class ApplicationTest {
         String expected = dependencyContent + dependencyContent2;
         // Test
         String result = this.sut.extractSpecificActionContent(action, applicationContext,
-                Application.PomFileDependencyActionClassName);
+                Application.PomFileDependencyActionClassName, applicationUtils);
         // Verify
         assertThat(result).isEqualTo(expected);
     }
@@ -387,7 +376,7 @@ public class ApplicationTest {
         Action action = new FolderPathAction(folderPath, propertyName);
         // Test
         String result = this.sut.extractSpecificActionContent(action, applicationContext,
-                Application.PomFileDependencyActionClassName);
+                Application.PomFileDependencyActionClassName, applicationUtils);
         // Verify
         assertThat(result).isBlank();
     }
@@ -395,7 +384,7 @@ public class ApplicationTest {
     @Test
     void extractDependencies() {
         // Initialize
-        doReturn(dependencyContent).when(sutSpy).extractSpecificActionContent(any(), any(), any());
+        doReturn(dependencyContent).when(sutSpy).extractSpecificActionContent(any(), any(), any(), any());
         List<String> actionList = new LinkedList<>();
         actionList.add(action1);
         actionList.add(action2);
@@ -406,7 +395,7 @@ public class ApplicationTest {
         String expected = dependencyContent + dependencyContent;
         // Test
         String result = this.sutSpy.extractApplicationTypeContent(applicationContext, actionRepository,
-                Application.PomFileDependencyActionClassName);
+                Application.PomFileDependencyActionClassName, applicationUtils);
         // Verify
         assertThat(result).isEqualTo(expected);
     }
@@ -414,9 +403,9 @@ public class ApplicationTest {
     @Test
     void initializeVelocity() {
         // Initialize
-        doReturn(dependencyContent).when(sutSpy).extractApplicationTypeContent(any(), any(), any());
+        doReturn(dependencyContent).when(sutSpy).extractApplicationTypeContent(any(), any(), any(), any());
         // Test
-        Context velocityContext = this.sutSpy.initializeVelocity(applicationContext, actionRepository);
+        Context velocityContext = this.sutSpy.initializeVelocity(applicationContext, actionRepository, applicationUtils);
         // Verify
         assertThat(velocityContext).isNotNull();
     }
