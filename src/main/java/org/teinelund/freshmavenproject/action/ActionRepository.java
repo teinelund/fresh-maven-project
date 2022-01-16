@@ -39,6 +39,10 @@ public class ActionRepository {
         cla.addAction(srcMainJavaPath);
         FolderPathAction srcTestJavaPath = new FolderPathAction("src/test/java", "srcTestJavaFolderName");
         cla.addAction(srcTestJavaPath);
+        FileAction applicationFile = new FileAction("Application.vtl", "Application.java", "mainPackageFolderPath");
+        cla.addAction(applicationFile);
+        FileAction applicationTestFile = new FileAction("ApplicationTest.vtl", "ApplicationTest.java", "testPackageFolderPath");
+        cla.addAction(applicationTestFile);
         StringBuilder content = new StringBuilder();
         content.append("            <plugin>\n" +
                 "                <groupId>org.apache.maven.plugins</groupId>\n" +

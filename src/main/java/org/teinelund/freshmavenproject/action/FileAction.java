@@ -20,7 +20,7 @@ public class FileAction implements Action {
         return targetFileName;
     }
 
-    public String getPathName() {
+    public String getPropertyName() {
         return pathName;
     }
 }

@@ -9,6 +9,7 @@ import org.apache.velocity.context.Context;
 import org.teinelund.freshmavenproject.action.AbstractAction;
 import org.teinelund.freshmavenproject.action.Action;
 import org.teinelund.freshmavenproject.action.ActionRepository;
+import org.teinelund.freshmavenproject.action.FileAction;
 import org.teinelund.freshmavenproject.action.FolderPathAction;
 import org.teinelund.freshmavenproject.action.ListOfAction;
 
@@ -73,17 +74,40 @@ public class Application {
         // * src/main/java
         // * src/test/java
         // * optional others as well ...
-        createFolders(applicationContext, velocityContext, applicationUtils, actionRepository);
+        createFoldersFromActionList(applicationContext, velocityContext, applicationUtils, actionRepository);
 
         createPackageFolders(applicationContext, velocityContext, applicationUtils, actionRepository);
 
         createPomFile(applicationContext, velocityContext, applicationUtils);
 
-        createApplicationSourceFile(applicationContext, velocityContext, applicationUtils);
-
-        createApplicationTestSourceFile(applicationContext, velocityContext, applicationUtils);
+        createFilesFromActionList(applicationContext, velocityContext, applicationUtils, actionRepository);
 
         createGitFiles(applicationContext, velocityContext, applicationUtils);
+    }
+
+    void createFilesFromActionList(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
+        printVerbose("Create files:", applicationContext);
+        for (String actionName : applicationContext.getApplicationType().getActionNames()) {
+            printVerbose("  Action name: " + actionName, applicationContext);
+            Action action = actionRepository.getAction(actionName);
+            createFileFromAction(action, applicationContext, velocityContext, applicationUtils);
+        }
+    }
+
+    void createFileFromAction(Action action, ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
+        if (action instanceof ListOfAction) {
+            printVerbose("    Action is a ListOfAction", applicationContext);
+            ListOfAction listOfAction = (ListOfAction) action;
+            for (Action action1 : listOfAction) {
+                createFileFromAction(action1, applicationContext, velocityContext, applicationUtils);
+            }
+        }
+        else if (action instanceof FileAction) {
+            printVerbose("    Action is a FolderPathAction", applicationContext);
+            FileAction fileAction = (FileAction) action;
+            processVelocityTemplate(fileAction.getTargetFileName(), fileAction.getSourceFileName(), (Path) applicationContext.getContext(fileAction.getPropertyName()),
+                    applicationContext, velocityContext, applicationUtils);
+        }
     }
 
     void createPackageFolders(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
@@ -108,21 +132,21 @@ public class Application {
         }
     }
 
-    void createFolders(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
+    void createFoldersFromActionList(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
         printVerbose("Create folders:", applicationContext);
         for (String actionName : applicationContext.getApplicationType().getActionNames()) {
             printVerbose("  Action name: " + actionName, applicationContext);
             Action action = actionRepository.getAction(actionName);
-            createFolder(action, applicationContext, velocityContext);
+            createFoldersFromAction(action, applicationContext, velocityContext);
         }
     }
 
-    void createFolder(Action action, ApplicationContext applicationContext, Context velocityContext) {
+    void createFoldersFromAction(Action action, ApplicationContext applicationContext, Context velocityContext) {
         if (action instanceof ListOfAction) {
             printVerbose("    Action is a ListOfAction", applicationContext);
             ListOfAction listOfAction = (ListOfAction) action;
             for (Action action1 : listOfAction) {
-                createFolder(action1, applicationContext, velocityContext);
+                createFoldersFromAction(action1, applicationContext, velocityContext);
             }
         }
         else if (action instanceof FolderPathAction) {
@@ -496,16 +520,6 @@ public class Application {
             printError("Could not create '" + targetFileName + "' file.");
             applicationUtils.exitError();
         }
-    }
-
-    void createApplicationSourceFile(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
-        processVelocityTemplate("Application.java", "Application.vtl",
-                (Path) applicationContext.getContext("mainPackageFolderPath"), applicationContext, velocityContext, applicationUtils);
-    }
-
-    void createApplicationTestSourceFile(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
-        processVelocityTemplate("ApplicationTest.java", "ApplicationTest.vtl",
-                (Path) applicationContext.getContext("testPackageFolderPath"), applicationContext, velocityContext, applicationUtils);
     }
 
     void createGitFiles(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
