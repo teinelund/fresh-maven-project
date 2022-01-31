@@ -12,4 +12,9 @@ public class FolderPathAction extends AbstractAction {
     public String getPropertyName() {
         return propertyName;
     }
+
+    @Override
+    public String toString() {
+        return "[folderPath: " + this.content + ", propertyName: " + this.propertyName + "]";
+    }
 }

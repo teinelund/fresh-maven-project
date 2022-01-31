@@ -18,11 +18,8 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.Scanner;
 
 /**
  * Main class
@@ -32,6 +29,8 @@ public class Application {
     public static final String PomFileDependencyActionClassName = "org.teinelund.freshmavenproject.action.PomFileDependencyAction";
     public static final String PomFilePropertyActionClassName = "org.teinelund.freshmavenproject.action.PomFilePropertyAction";
     public static final String PomFilePluginActionClassName = "org.teinelund.freshmavenproject.action.PomFilePluginAction";
+    public static final String projectFolderPathPropertyName = "projectFolderPath";
+    public static final String projectFolderPathNamePropertyName = "projectFolderPathName";
 
     public static void main(String[] args) {
         Application application = new Application();
@@ -42,9 +41,10 @@ public class Application {
         ActionRepository actionRepository = new ActionRepository();
         ApplicationContext applicationContext = new ApplicationContext();
         InteractiveQueryEngine interactiveQueryEngine = new InteractiveQueryEngine();
+        PropertyRepository propertyRepository = new PropertyRepository();
 
         try {
-            application.execute(args, options, applicationTypes, actionRepository, applicationContext, applicationUtils, interactiveQueryEngine);
+            application.execute(args, options, applicationTypes, actionRepository, applicationContext, applicationUtils, interactiveQueryEngine, propertyRepository);
         }
         catch(Exception e) {
             applicationUtils.printError(e.getMessage());
@@ -55,7 +55,7 @@ public class Application {
     public void execute(String[] args, CommandLineOptions options,
                         ApplicationTypes applicationTypes, ActionRepository actionRepository,
                         ApplicationContext applicationContext, ApplicationUtils applicationUtils,
-                        InteractiveQueryEngine interactiveQueryEngine) {
+                        InteractiveQueryEngine interactiveQueryEngine, PropertyRepository propertyRepository) {
 
         parseCommandLineOptions(args, options);
 
@@ -68,100 +68,213 @@ public class Application {
         interactiveMode(options, applicationTypes, applicationContext, interactiveQueryEngine, applicationUtils);
         nonInteractiveMode(options, applicationUtils);
 
-        createProjectFolder(applicationContext, applicationUtils);
+        initializeVelocity(applicationContext, applicationUtils);
 
-        Context velocityContext = initializeVelocity(applicationContext, actionRepository, applicationUtils);
+        Context velocityContext = initializeVelocityContext(applicationContext, actionRepository, propertyRepository, applicationUtils);
+
+        createProjectFolder(applicationContext, applicationUtils, propertyRepository);
+
+        addFolderPropertiesToVelocityContext(velocityContext, applicationContext, actionRepository, propertyRepository, applicationUtils);
 
         // This creates:
         // * src/main/java
         // * src/test/java
         // * optional others as well ...
-        createFoldersFromActionList(applicationContext, velocityContext, applicationUtils, actionRepository);
+        createFoldersFromActionList(applicationContext, applicationUtils, actionRepository, propertyRepository);
 
-        createPackageFolders(applicationContext, velocityContext, applicationUtils, actionRepository);
+        createFilesFromActionList(applicationContext, velocityContext, applicationUtils, actionRepository, propertyRepository);
 
-        createFilesFromActionList(applicationContext, velocityContext, applicationUtils, actionRepository);
-
-        createGitFiles(applicationContext, velocityContext, applicationUtils);
+        createGitFiles(applicationContext, velocityContext, applicationUtils, propertyRepository);
     }
 
-    void createFilesFromActionList(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
-        applicationUtils.printVerbose("Create files:", applicationContext);
-        for (String actionName : applicationContext.getApplicationType().getActionNames()) {
-            applicationUtils.printVerbose("  Action name: " + actionName, applicationContext);
-            Action action = actionRepository.getAction(actionName);
-            createFileFromAction(action, applicationContext, velocityContext, applicationUtils);
-        }
+    void addFolderPropertiesToVelocityContext(Context velocityContext, ApplicationContext applicationContext, ActionRepository actionRepository, PropertyRepository propertyRepository, ApplicationUtils applicationUtils) {
+        applicationUtils.printVerbose("Method addFolderPropertiesToVelocityContext:", applicationContext);
+        UNRESOLVED_PROPERTIES unresolvedProperties;
+        int scanNr = 0;
+        do {
+            unresolvedProperties = UNRESOLVED_PROPERTIES.NO;
+            for (String actionName : applicationContext.getApplicationType().getActionNames()) {
+                applicationUtils.printVerbose("  Action name: " + actionName, applicationContext);
+                Action action = actionRepository.getAction(actionName);
+                UNRESOLVED_PROPERTIES unresolvedProperties1 = addFolderPropertiesToVelocityContextFromFolderPathAction(action, applicationContext, velocityContext, applicationUtils, propertyRepository);
+                if (unresolvedProperties1 == UNRESOLVED_PROPERTIES.YES) {
+                    unresolvedProperties = UNRESOLVED_PROPERTIES.YES;
+                }
+            }
+            if (unresolvedProperties == UNRESOLVED_PROPERTIES.YES) {
+                applicationUtils.printVerbose("Unresolved properties. Rescan...", applicationContext);
+                scanNr++;
+                if (scanNr == 10) {
+                    throw new RuntimeException("Unresolved properties.");
+                }
+            }
+        } while (unresolvedProperties == UNRESOLVED_PROPERTIES.YES);
     }
 
-    void createFileFromAction(Action action, ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
+    enum UNRESOLVED_PROPERTIES {YES, NO};
+
+    UNRESOLVED_PROPERTIES addFolderPropertiesToVelocityContextFromFolderPathAction(Action action, ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, PropertyRepository propertyRepository) {
+        UNRESOLVED_PROPERTIES unresolvedProperties = UNRESOLVED_PROPERTIES.NO;
         if (action instanceof ListOfAction) {
             applicationUtils.printVerbose("    Action is a ListOfAction", applicationContext);
             ListOfAction listOfAction = (ListOfAction) action;
             for (Action action1 : listOfAction) {
-                createFileFromAction(action1, applicationContext, velocityContext, applicationUtils);
+                UNRESOLVED_PROPERTIES unresolvedProperties1 = addFolderPropertiesToVelocityContextFromFolderPathAction(action1, applicationContext, velocityContext, applicationUtils, propertyRepository);
+                if (unresolvedProperties1 == UNRESOLVED_PROPERTIES.YES) {
+                    unresolvedProperties = UNRESOLVED_PROPERTIES.YES;
+                }
+            }
+        }
+        else if (action instanceof FolderPathAction) {
+            FolderPathAction folderPathAction = (FolderPathAction) action;
+            applicationUtils.printVerbose("    Action is a FolderPathAction: " + folderPathAction + ".", applicationContext);
+            String propertyName = folderPathAction.getPropertyName();
+            boolean propertyNotExist = propertyRepository.containsNotProperty(propertyName);
+            if (propertyNotExist) {
+                StringWriter velocityEvaluatedFolderContent = new StringWriter();
+                Velocity.evaluate(velocityContext, velocityEvaluatedFolderContent, "folderContent", folderPathAction.getContent());
+                if (velocityEvaluatedFolderContent.toString().contains("${")) {
+                    unresolvedProperties = UNRESOLVED_PROPERTIES.YES;
+                    applicationUtils.printVerbose("  Unresolved property: " + propertyName + ", content: '" + velocityEvaluatedFolderContent.toString() + "'.", applicationContext);
+                }
+                else {
+                    velocityContext.put(folderPathAction.getPropertyName(), velocityEvaluatedFolderContent.toString());
+                    propertyRepository.put(folderPathAction.getPropertyName(), velocityEvaluatedFolderContent.toString());
+                }
+            }
+        }
+        return unresolvedProperties;
+    }
+
+
+
+    Context initializeVelocityContext(ApplicationContext applicationContext, ActionRepository actionRepository, PropertyRepository propertyRepository, ApplicationUtils applicationUtils) {
+        applicationUtils.printVerbose("Initialize VelocityContext:", applicationContext);
+
+        VelocityContext context = new VelocityContext();
+
+        context.put( "projectName", applicationContext.getProjectName());
+        propertyRepository.put("projectName", applicationContext.getProjectName());
+        applicationUtils.printVerbose("  projectName:" + applicationContext.getProjectName(), applicationContext);
+        context.put( "programNameUsedInPrintVersion", applicationContext.getProgramNameUsedInPrintVersion());
+        propertyRepository.put( "programNameUsedInPrintVersion", applicationContext.getProgramNameUsedInPrintVersion());
+        applicationUtils.printVerbose("  programNameUsedInPrintVersion:" + applicationContext.getProgramNameUsedInPrintVersion(), applicationContext);
+        context.put( "packageName", applicationContext.getPackageName());
+        propertyRepository.put( "packageName", applicationContext.getPackageName());
+        applicationUtils.printVerbose("  packageName:" + applicationContext.getPackageName(), applicationContext);
+
+        context.put( "packageFolderPathName", applicationContext.getPackageFolderPathName());
+        propertyRepository.put( "packageFolderPathName", applicationContext.getPackageFolderPathName());
+        applicationUtils.printVerbose("  packageFolderPathName:" + applicationContext.getPackageFolderPathName(), applicationContext);
+
+        context.put( "artifactId", applicationContext.getArtifactId());
+        propertyRepository.put( "artifactId", applicationContext.getArtifactId());
+        applicationUtils.printVerbose("  artifactId:" + applicationContext.getArtifactId(), applicationContext);
+        context.put( "groupId", applicationContext.getGroupId());
+        propertyRepository.put( "groupId", applicationContext.getGroupId());
+        applicationUtils.printVerbose("  groupId:" + applicationContext.getGroupId(), applicationContext);
+        context.put( "versionOfApplication", applicationContext.getVersionOfApplication());
+        propertyRepository.put( "versionOfApplication", applicationContext.getVersionOfApplication());
+        applicationUtils.printVerbose("  versionOfApplication:" + applicationContext.getVersionOfApplication(), applicationContext);
+
+        String dependencies = extractApplicationTypeContent(applicationContext, actionRepository, PomFileDependencyActionClassName, applicationUtils);
+        String properties = extractApplicationTypeContent(applicationContext, actionRepository, PomFilePropertyActionClassName, applicationUtils);
+        if (Objects.nonNull(properties) && StringUtils.isNotBlank(properties)) {
+            properties = "    <properties>\n" + properties + "    </properties>\n";
+        }
+        String plugins = extractApplicationTypeContent(applicationContext, actionRepository, PomFilePluginActionClassName, applicationUtils);
+
+
+        context.put( "dependencies", dependencies);
+        applicationUtils.printVerbose("  dependencies:" + dependencies, applicationContext);
+        context.put( "properties", properties);
+        applicationUtils.printVerbose("  properties:" + properties, applicationContext);
+
+        StringWriter velocityEvaluatedPlugins = new StringWriter();
+        Velocity.evaluate(context, velocityEvaluatedPlugins, "plugins", plugins);
+        context.put( "plugins", velocityEvaluatedPlugins.toString());
+        applicationUtils.printVerbose("  plugins:" + properties, applicationContext);
+
+        return context;
+    }
+
+    void createFilesFromActionList(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils,
+                                   ActionRepository actionRepository, PropertyRepository propertyRepository) {
+        applicationUtils.printVerbose("Create files:", applicationContext);
+        for (String actionName : applicationContext.getApplicationType().getActionNames()) {
+            applicationUtils.printVerbose("  Action name: " + actionName, applicationContext);
+            Action action = actionRepository.getAction(actionName);
+            createFileFromAction(action, applicationContext, velocityContext, applicationUtils, propertyRepository);
+        }
+    }
+
+    void createFileFromAction(Action action, ApplicationContext applicationContext, Context velocityContext,
+                              ApplicationUtils applicationUtils, PropertyRepository propertyRepository) {
+        applicationUtils.printVerbose("createFileFromAction", applicationContext);
+        if (action instanceof ListOfAction) {
+            applicationUtils.printVerbose("    Action is a ListOfAction", applicationContext);
+            ListOfAction listOfAction = (ListOfAction) action;
+            for (Action action1 : listOfAction) {
+                createFileFromAction(action1, applicationContext, velocityContext, applicationUtils, propertyRepository);
             }
         }
         else if (action instanceof FileAction) {
             applicationUtils.printVerbose("    Action is a FolderPathAction", applicationContext);
             FileAction fileAction = (FileAction) action;
-            processVelocityTemplate(fileAction.getTargetFileName(), fileAction.getSourceFileName(), (Path) applicationContext.getContext(fileAction.getPropertyName()),
+            Path templatePath = null;
+            if (Application.projectFolderPathNamePropertyName.equals(fileAction.getPropertyName())) {
+                templatePath = Paths.get((String) propertyRepository.get(Application.projectFolderPathNamePropertyName));
+            }
+            else {
+                templatePath = Paths.get((String) propertyRepository.get(Application.projectFolderPathNamePropertyName), (String) propertyRepository.get(fileAction.getPropertyName()));
+            }
+            applicationUtils.printVerbose("  template path: " + templatePath.toString() + ".", applicationContext);
+            processVelocityTemplate(fileAction.getTargetFileName(), fileAction.getSourceFileName(), templatePath,
                     applicationContext, velocityContext, applicationUtils);
         }
     }
 
-    void createPackageFolders(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
-        applicationUtils.printVerbose("Create package folders:", applicationContext);
-        Path path = Paths.get(((Path) applicationContext.getContext("srcMainJavaFolderNamePath")).toString(), applicationContext.getPackageFolderPathName());
-        try {
-            FileUtils.forceMkdir(path.toFile());
-            applicationContext.putContext( "mainPackageFolderPath", path);
-            applicationUtils.printVerbose("    Folder structure: '" + path.toString() + "' created.", applicationContext);
-        } catch (IOException e) {
-            applicationUtils.printError("Could not create folder '" + path.toString() + "'.");
-            System.exit(1);
-        }
-        path = Paths.get(((Path) applicationContext.getContext("srcTestJavaFolderNamePath")).toString(), applicationContext.getPackageFolderPathName());
-        try {
-            FileUtils.forceMkdir(path.toFile());
-            applicationContext.putContext( "testPackageFolderPath", path);
-            applicationUtils.printVerbose("    Folder structure: '" + path.toString() + "' created.", applicationContext);
-        } catch (IOException e) {
-            applicationUtils.printError("Could not create folder '" + path.toString() + "'.");
-            System.exit(1);
-        }
-    }
-
-    void createFoldersFromActionList(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, ActionRepository actionRepository) {
+    void createFoldersFromActionList(ApplicationContext applicationContext, ApplicationUtils applicationUtils,
+                                     ActionRepository actionRepository, PropertyRepository propertyRepository) {
         applicationUtils.printVerbose("Create folders:", applicationContext);
         for (String actionName : applicationContext.getApplicationType().getActionNames()) {
             applicationUtils.printVerbose("  Action name: " + actionName, applicationContext);
             Action action = actionRepository.getAction(actionName);
-            createFoldersFromAction(action, applicationContext, velocityContext, applicationUtils);
+            createFoldersFromAction(action, applicationContext, applicationUtils, propertyRepository);
         }
     }
 
-    void createFoldersFromAction(Action action, ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
+    void createFoldersFromAction(Action action, ApplicationContext applicationContext,
+                                 ApplicationUtils applicationUtils, PropertyRepository propertyRepository) {
         if (action instanceof ListOfAction) {
             applicationUtils.printVerbose("    Action is a ListOfAction", applicationContext);
             ListOfAction listOfAction = (ListOfAction) action;
             for (Action action1 : listOfAction) {
-                createFoldersFromAction(action1, applicationContext, velocityContext, applicationUtils);
+                createFoldersFromAction(action1, applicationContext, applicationUtils, propertyRepository);
             }
         }
         else if (action instanceof FolderPathAction) {
             applicationUtils.printVerbose("    Action is a FolderPathAction", applicationContext);
             FolderPathAction folderPathAction = (FolderPathAction) action;
-            Path folderPath = Path.of(applicationContext.getContext("projectFolderPath").toString(), folderPathAction.getContent());
+            if (propertyRepository.containsNotProperty(folderPathAction.getPropertyName())) {
+                throw new RuntimeException("Property name: '" + folderPathAction.getPropertyName() + "' is not stored in PropertyRepository.");
+            }
+            String folderPathName = (String) propertyRepository.get(folderPathAction.getPropertyName());
+            if (StringUtils.isBlank(folderPathName)){
+                throw new RuntimeException("Property name: '" + folderPathAction.getPropertyName() + "' is stored in PropertyRepository as empty string: '" + folderPathName + "'.");
+            }
+            else if (folderPathName.contains("${")) {
+                throw new RuntimeException("Property name: '" + folderPathAction.getPropertyName() + "' is stored in PropertyRepository with variable name in it. See: '" + folderPathName + "'.");
+            }
+            Path folderPath = Path.of(propertyRepository.get(projectFolderPathPropertyName).toString(), folderPathName);
             try {
                 FileUtils.forceMkdir(folderPath.toFile());
             } catch (IOException e) {
-                applicationUtils.printError("Could not create folder '" + folderPath.toString() + "'.");
+                applicationUtils.printError("Could not create folder '" + folderPath + "'.");
                 System.exit(1);
             }
-            applicationUtils.printVerbose("    Folder structure: '" + folderPath.toString() + "' created.", applicationContext);
-            velocityContext.put( folderPathAction.getPropertyName(), folderPathAction.getContent());
-            applicationContext.putContext( folderPathAction.getPropertyName() + "Path", folderPath);
+            applicationUtils.printVerbose("    Folder structure: '" + folderPath + "' created.", applicationContext);
+            propertyRepository.put(folderPathAction.getPropertyName() + "Path", folderPath);
         }
     }
 
@@ -179,58 +292,12 @@ public class Application {
         }
     }
 
-    enum TypeOfApplication {
-        COMMAND_LINE_APPLICATION("Stand alone Application (Command Line Application)"),
-        LIBRARY("Library (Jar file)"),
-        J2EE("Java Enterprise Edition Application (J2EE)");
-
-        private String description;
-
-        TypeOfApplication(String description) {
-            this.description = description;
-        }
-
-        public String getDescription() {
-            return this.description;
-        }
-
-    }
-
-    VelocityContext initializeVelocity(ApplicationContext applicationContext, ActionRepository actionRepository, ApplicationUtils applicationUtils) {
-        applicationUtils.printVerbose("Method initializeVelocity:", applicationContext);
-        String dependencies = extractApplicationTypeContent(applicationContext, actionRepository, PomFileDependencyActionClassName, applicationUtils);
-        String properties = extractApplicationTypeContent(applicationContext, actionRepository, PomFilePropertyActionClassName, applicationUtils);
-        String plugins = extractApplicationTypeContent(applicationContext, actionRepository, PomFilePluginActionClassName, applicationUtils);
-        if (Objects.nonNull(properties) && StringUtils.isNotBlank(properties)) {
-            properties = "    <properties>\n" + properties + "    </properties>\n";
-        }
-        applicationUtils.printVerbose("  projectName:" + applicationContext.getProjectName(), applicationContext);
-        applicationUtils.printVerbose("  programNameUsedInPrintVersion:" + applicationContext.getProgramNameUsedInPrintVersion(), applicationContext);
-        applicationUtils.printVerbose("  packageName:" + applicationContext.getPackageName(), applicationContext);
-        applicationUtils.printVerbose("  artifactId:" + applicationContext.getArtifactId(), applicationContext);
-        applicationUtils.printVerbose("  groupId:" + applicationContext.getGroupId(), applicationContext);
-        applicationUtils.printVerbose("  versionOfApplication:" + applicationContext.getVersionOfApplication(), applicationContext);
-        applicationUtils.printVerbose("  dependencies:" + dependencies, applicationContext);
-        applicationUtils.printVerbose("  properties:" + properties, applicationContext);
+    void initializeVelocity(ApplicationContext applicationContext, ApplicationUtils applicationUtils) {
+        applicationUtils.printVerbose("Initialize Velocity.", applicationContext);
         Properties p = new Properties();
         p.setProperty("resource.loader", "class");
         p.setProperty("class.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
         Velocity.init(p);
-        VelocityContext context = new VelocityContext();
-        context.put( "projectName", applicationContext.getProjectName());
-        context.put( "programNameUsedInPrintVersion", applicationContext.getProgramNameUsedInPrintVersion());
-        context.put( "packageName", applicationContext.getPackageName());
-        context.put( "artifactId", applicationContext.getArtifactId());
-        context.put( "groupId", applicationContext.getGroupId());
-        context.put( "versionOfApplication", applicationContext.getVersionOfApplication());
-
-        StringWriter velocityEvaluatedPlugins = new StringWriter();
-        Velocity.evaluate(context, velocityEvaluatedPlugins, "plugins", plugins);
-
-        context.put( "dependencies", dependencies);
-        context.put( "properties", properties);
-        context.put( "plugins", velocityEvaluatedPlugins.toString());
-        return context;
     }
 
     String extractApplicationTypeContent(ApplicationContext applicationContext, ActionRepository actionRepository, String actionClassName, ApplicationUtils applicationUtils) {
@@ -293,15 +360,15 @@ public class Application {
         }
     }
 
-    void createProjectFolder(ApplicationContext context, ApplicationUtils applicationUtils) {
+    void createProjectFolder(ApplicationContext context, ApplicationUtils applicationUtils, PropertyRepository propertyRepository) {
         applicationUtils.printVerbose("Create Project Folder.", context);
-        String projectFolderName = context.getArtifactId();
-        if (StringUtils.isNotBlank(context.getProjectName())) {
-            projectFolderName = context.getProjectName();
-        }
-        Path projectFolderPath = Path.of(context.getUserDir(), projectFolderName);
 
-        applicationUtils.printVerbose("Project Folder Path: '" + projectFolderPath.toString() + "'.", context);
+        if (Objects.isNull(context.getProjectName()) || context.getProjectName().isBlank()) {
+            throw new IllegalArgumentException("ProjectName in ApplicationContext is null.");
+        }
+        Path projectFolderPath = Path.of(context.getUserDir(), context.getProjectName());
+
+        applicationUtils.printVerbose("Project Folder Path: '" + projectFolderPath + "'.", context);
 
         try {
             FileUtils.forceMkdir(projectFolderPath.toFile());
@@ -311,7 +378,8 @@ public class Application {
         }
         applicationUtils.printVerbose("Project Folder, '" + projectFolderPath.toString() + "', created.", context);
 
-        context.putContext("projectFolderPath", projectFolderPath);
+        propertyRepository.put(projectFolderPathPropertyName, projectFolderPath);
+        propertyRepository.put(projectFolderPathNamePropertyName, projectFolderPath.toString());
     }
 
     void processVelocityTemplate(String targetFileName, String templateName, Path targetPath, ApplicationContext applicationContext,
@@ -339,7 +407,7 @@ public class Application {
         }
     }
 
-    void createGitFiles(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils) {
+    void createGitFiles(ApplicationContext applicationContext, Context velocityContext, ApplicationUtils applicationUtils, PropertyRepository propertyRepository) {
         applicationUtils.printVerbose("Create git files.", applicationContext);
 
         if (applicationContext.isNoGit()) {
@@ -347,10 +415,10 @@ public class Application {
             return;
         }
 
-        processVelocityTemplate("README.md", "README.vtl", (Path) applicationContext.getContext("projectFolderPath"),
+        processVelocityTemplate("README.md", "README.vtl", (Path) propertyRepository.get(projectFolderPathPropertyName),
                 applicationContext, velocityContext, applicationUtils);
 
-        processVelocityTemplate(".gitignore", "gitignore.vtl", (Path) applicationContext.getContext("projectFolderPath"),
+        processVelocityTemplate(".gitignore", "gitignore.vtl", (Path) propertyRepository.get(projectFolderPathPropertyName),
                 applicationContext, velocityContext, applicationUtils);
     }
 }

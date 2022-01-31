@@ -21,6 +21,10 @@ public class ApplicationUtils {
         System.out.println("[ERROR] " + message);
     }
 
+    public void printInformation(String message) {
+        System.out.println("[INFO] " + message);
+    }
+
     public void printVerbose(String message, Verbosable verbosable) {
         if (verbosable.isVerbose()) {
             System.out.println("[VERBOSE] " + message);

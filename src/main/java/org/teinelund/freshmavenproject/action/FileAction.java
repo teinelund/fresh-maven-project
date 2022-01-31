@@ -4,12 +4,12 @@ public class FileAction implements Action {
 
     private String sourceFileName;
     private String targetFileName;
-    private String pathName;
+    private String propertyName;
 
-    public FileAction(String sourceFileName, String targetFileName, String pathName) {
+    public FileAction(String sourceFileName, String targetFileName, String propertyName) {
         this.sourceFileName = sourceFileName;
         this.targetFileName = targetFileName;
-        this.pathName = pathName;
+        this.propertyName = propertyName;
     }
 
     public String getSourceFileName() {
@@ -21,6 +21,6 @@ public class FileAction implements Action {
     }
 
     public String getPropertyName() {
-        return pathName;
+        return propertyName;
     }
 }

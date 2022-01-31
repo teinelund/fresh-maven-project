@@ -39,11 +39,17 @@ public class ActionRepository {
         cla.addAction(srcMainJavaPath);
         FolderPathAction srcTestJavaPath = new FolderPathAction("src/test/java", "srcTestJavaFolderName");
         cla.addAction(srcTestJavaPath);
-        FileAction pomFile = new FileAction("pom.vtl", "pom.xml", "projectFolderPath");
+        FolderPathAction mainPackageFolderPath = new FolderPathAction("${srcMainJavaFolderName}/${packageFolderPathName}",
+                "mainPackageFolderPathName");
+        cla.addAction(mainPackageFolderPath);
+        FolderPathAction testPackageFolderPath = new FolderPathAction("${srcTestJavaFolderName}/${packageFolderPathName}",
+                "testPackageFolderPathName");
+        cla.addAction(testPackageFolderPath);
+        FileAction pomFile = new FileAction("pom.vtl", "pom.xml", "projectFolderPathName");
         cla.addAction(pomFile);
-        FileAction applicationFile = new FileAction("Application.vtl", "Application.java", "mainPackageFolderPath");
+        FileAction applicationFile = new FileAction("Application.vtl", "Application.java", "mainPackageFolderPathName");
         cla.addAction(applicationFile);
-        FileAction applicationTestFile = new FileAction("ApplicationTest.vtl", "ApplicationTest.java", "testPackageFolderPath");
+        FileAction applicationTestFile = new FileAction("ApplicationTest.vtl", "ApplicationTest.java", "testPackageFolderPathName");
         cla.addAction(applicationTestFile);
         StringBuilder content = new StringBuilder();
         content.append("            <plugin>\n" +

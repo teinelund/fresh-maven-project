@@ -4,6 +4,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
 import org.apache.velocity.context.Context;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,25 +26,28 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.teinelund.freshmavenproject.Application.PomFileDependencyActionClassName;
+import static org.teinelund.freshmavenproject.Application.PomFilePluginActionClassName;
+import static org.teinelund.freshmavenproject.Application.PomFilePropertyActionClassName;
+import static org.teinelund.freshmavenproject.Application.projectFolderPathPropertyName;
 
 @ExtendWith(MockitoExtension.class)
 public class ApplicationTest {
 
     private Application sut = null;
-    private static final String expectedVersionOfProject = "1.0.0-SNAPSHOT";
     private static final String artifactId = "PROJECT_1";
     static final String dependencyContent = "CONTENT";
     private static final String dependencyContent2 = "CONTENT2";
@@ -53,6 +57,32 @@ public class ApplicationTest {
     private static final String action2 = "ACTION_2";
     private static Context context;
     private static final String programNameUsedInPrintVersion = "PROGRAM_NAME";
+    private static final String PROJECT_NAME = "PROJECT_NAME";
+    private static final String PROGRAM_NAME_USED_IN_PRINT_VERSION = "PROGRAM_NAME_USED_IN_PRINT_VERSION";
+    private static final String PACKAGE_NAME = "PACKAGE_NAME";
+    private static final String ARTIFACT_ID = "ARTIFACT_ID";
+    private static final String GROUPR_ID = "GROUPR_ID";
+    private static final String VERSION_OF_APPLICATION = "VERSION_OF_APPLICATION";
+    private static final String DEPENDECIES_STRING = "DEPENDECIES_STRING";
+    private static final String PROPERTIES_STRING = "PROPERTIES_STRING";
+    private static final String PLUGINS_STRING = "PLUGINS_STRING";
+    private static final String PROJECT_NAME_STRING_KEY = "projectName";
+    private static final String PROGRAM_NAME_USED_IN_PRINT_VERSION_STRING_KEY = "programNameUsedInPrintVersion";
+    private static final String PACKAGE_NAME_STRING_KEY = "packageName";
+    private static final String ARTIFACT_ID_STRING_KEY = "artifactId";
+    private static final String GROUPR_ID_STRING_KEY = "groupId";
+    private static final String VERSION_OF_APPLICATION_STRING_KEY = "versionOfApplication";
+    private static final String DEPENDECIES_STRING_STRING_KEY = "dependencies";
+    private static final String PROPERTIES_STRING_STRING_KEY = "properties";
+    private static final String PLUGINS_STRING_STRING_KEY = "plugins";
+    private static final String CONTEXT_FOLDER_PATH_KEY_1 = "pathVar1";
+    private static final String CONTEXT_FOLDER_PATH_KEY_2 = "pathVar2";
+    private static final String CONTEXT_FOLDER_PATH_VALUE = "/path1/path2";
+    private static final String FOLDER_PATH_ACTION_CONTENT_1 = "${" + CONTEXT_FOLDER_PATH_KEY_1 + "}/path3";
+    private static final String FOLDER_PATH_ACTION_CONTENT_2 = "${" + CONTEXT_FOLDER_PATH_KEY_1 + "}/${" + CONTEXT_FOLDER_PATH_KEY_2 +  "}/path3";
+    private static final String FOLDER_PATH_ACTION_CONTENT_RESULT = CONTEXT_FOLDER_PATH_VALUE + "/path3";
+    private static final String FOLDER_PATH_KEY = "pathKey";
+
 
     @Mock
     private CommandLineOptions options;
@@ -65,6 +95,9 @@ public class ApplicationTest {
 
     @Mock
     private ActionRepository actionRepository;
+
+    @Mock
+    private PropertyRepository propertyRepository;
 
     @Spy
     private Application sutSpy = new Application();
@@ -79,185 +112,23 @@ public class ApplicationTest {
         this.sut = new Application();
     }
 
-    @Test
-    void parseCommandLineOptionsWhereArgsIsEmpty() {
-        // Initialize
-        String[] args = {};
-        CommandLineOptions options = new CommandLineOptions();
-        // Test
-        this.sut.parseCommandLineOptions(args, options);
-        // Verify
-        assertThat(options.getGroupid()).isBlank();
-        assertThat(options.getArtifactId()).isBlank();
-        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
-        assertThat(options.getProjectName()).isBlank();
-        assertThat(options.getPackageName()).isBlank();
-        assertFalse(options.isNoGit());
-        assertFalse(options.isInteractive());
-        assertFalse(options.isVerbose());
-        assertFalse(options.isVersion());
-        assertFalse(options.isHelp());
-    }
+    //
+    // parseCommandLineOptions
+    //
 
     @Test
-    void parseCommandLineOptionsWhereArgsIsHelpShort() {
+    void parseCommandLineOptions() {
         // Initialize
         String[] args = {"-h"};
-        CommandLineOptions options = new CommandLineOptions();
         // Test
         this.sut.parseCommandLineOptions(args, options);
         // Verify
-        assertThat(options.getGroupid()).isBlank();
-        assertThat(options.getArtifactId()).isBlank();
-        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
-        assertThat(options.getProjectName()).isBlank();
-        assertThat(options.getPackageName()).isBlank();
-        assertFalse(options.isNoGit());
-        assertFalse(options.isInteractive());
-        assertFalse(options.isVerbose());
-        assertFalse(options.isVersion());
-        assertTrue(options.isHelp());
+        verify(options, times(1)).parse(any());
     }
 
-    @Test
-    void parseCommandLineOptionsWhereArgsIsHelpLong() {
-        // Initialize
-        String[] args = {"--help"};
-        CommandLineOptions options = new CommandLineOptions();
-        // Test
-        this.sut.parseCommandLineOptions(args, options);
-        // Verify
-        assertThat(options.getGroupid()).isBlank();
-        assertThat(options.getArtifactId()).isBlank();
-        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
-        assertThat(options.getProjectName()).isBlank();
-        assertThat(options.getPackageName()).isBlank();
-        assertFalse(options.isNoGit());
-        assertFalse(options.isInteractive());
-        assertFalse(options.isVerbose());
-        assertFalse(options.isVersion());
-        assertTrue(options.isHelp());
-    }
-
-    @Test
-    void parseCommandLineOptionsWhereArgsIsVersionShort() {
-        // Initialize
-        String[] args = {"-V"};
-        CommandLineOptions options = new CommandLineOptions();
-        // Test
-        this.sut.parseCommandLineOptions(args, options);
-        // Verify
-        assertThat(options.getGroupid()).isBlank();
-        assertThat(options.getArtifactId()).isBlank();
-        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
-        assertThat(options.getProjectName()).isBlank();
-        assertThat(options.getPackageName()).isBlank();
-        assertFalse(options.isNoGit());
-        assertFalse(options.isInteractive());
-        assertFalse(options.isVerbose());
-        assertTrue(options.isVersion());
-        assertFalse(options.isHelp());
-    }
-
-    @Test
-    void parseCommandLineOptionsWhereArgsIsVersionLong() {
-        // Initialize
-        String[] args = {"--version"};
-        CommandLineOptions options = new CommandLineOptions();
-        // Test
-        this.sut.parseCommandLineOptions(args, options);
-        // Verify
-        assertThat(options.getGroupid()).isBlank();
-        assertThat(options.getArtifactId()).isBlank();
-        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
-        assertThat(options.getProjectName()).isBlank();
-        assertThat(options.getPackageName()).isBlank();
-        assertFalse(options.isNoGit());
-        assertFalse(options.isInteractive());
-        assertFalse(options.isVerbose());
-        assertTrue(options.isVersion());
-        assertFalse(options.isHelp());
-    }
-
-    @Test
-    void parseCommandLineOptionsWhereArgsIsVerboseShort() {
-        // Initialize
-        String[] args = {"-v"};
-        CommandLineOptions options = new CommandLineOptions();
-        // Test
-        this.sut.parseCommandLineOptions(args, options);
-        // Verify
-        assertThat(options.getGroupid()).isBlank();
-        assertThat(options.getArtifactId()).isBlank();
-        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
-        assertThat(options.getProjectName()).isBlank();
-        assertThat(options.getPackageName()).isBlank();
-        assertFalse(options.isNoGit());
-        assertFalse(options.isInteractive());
-        assertTrue(options.isVerbose());
-        assertFalse(options.isVersion());
-        assertFalse(options.isHelp());
-    }
-
-    @Test
-    void parseCommandLineOptionsWhereArgsIsVerboseLong() {
-        // Initialize
-        String[] args = {"--verbose"};
-        CommandLineOptions options = new CommandLineOptions();
-        // Test
-        this.sut.parseCommandLineOptions(args, options);
-        // Verify
-        assertThat(options.getGroupid()).isBlank();
-        assertThat(options.getArtifactId()).isBlank();
-        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
-        assertThat(options.getProjectName()).isBlank();
-        assertThat(options.getPackageName()).isBlank();
-        assertFalse(options.isNoGit());
-        assertFalse(options.isInteractive());
-        assertTrue(options.isVerbose());
-        assertFalse(options.isVersion());
-        assertFalse(options.isHelp());
-    }
-
-    @Test
-    void parseCommandLineOptionsWhereArgsIsInteractiveShort() {
-        // Initialize
-        String[] args = {"-i"};
-        CommandLineOptions options = new CommandLineOptions();
-        // Test
-        this.sut.parseCommandLineOptions(args, options);
-        // Verify
-        assertThat(options.getGroupid()).isBlank();
-        assertThat(options.getArtifactId()).isBlank();
-        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
-        assertThat(options.getProjectName()).isBlank();
-        assertThat(options.getPackageName()).isBlank();
-        assertFalse(options.isNoGit());
-        assertTrue(options.isInteractive());
-        assertFalse(options.isVerbose());
-        assertFalse(options.isVersion());
-        assertFalse(options.isHelp());
-    }
-
-    @Test
-    void parseCommandLineOptionsWhereArgsIsInteractiveLong() {
-        // Initialize
-        String[] args = {"--interactive"};
-        CommandLineOptions options = new CommandLineOptions();
-        // Test
-        this.sut.parseCommandLineOptions(args, options);
-        // Verify
-        assertThat(options.getGroupid()).isBlank();
-        assertThat(options.getArtifactId()).isBlank();
-        assertThat(options.getVersionOfProject()).isEqualTo(expectedVersionOfProject);
-        assertThat(options.getProjectName()).isBlank();
-        assertThat(options.getPackageName()).isBlank();
-        assertFalse(options.isNoGit());
-        assertTrue(options.isInteractive());
-        assertFalse(options.isVerbose());
-        assertFalse(options.isVersion());
-        assertFalse(options.isHelp());
-    }
+    //
+    // ifHelpOptionOrVersionOption
+    //
 
     @Test
     void ifHelpOptionOrVersionOptionWhereHelpAndVersionIsFalse() {
@@ -306,6 +177,10 @@ public class ApplicationTest {
         verify(applicationUtils, times(1)).exit();
     }
 
+    //
+    // verifyParameters
+    //
+
     @Test
     void verifyParametersWhereOptionsIsInteractive() {
         // Initialize
@@ -318,68 +193,59 @@ public class ApplicationTest {
         verify(applicationUtils, never()).exitError();
     }
 
-    @Test
-    void createProjectFolder(@TempDir Path tempDir) {
-        // Initialize
-        when(applicationContext.getArtifactId()).thenReturn(artifactId);
-        when(applicationContext.getProjectName()).thenReturn(null);
-        when(applicationContext.getUserDir()).thenReturn(tempDir.toString());
-        // Test
-        this.sut.createProjectFolder(applicationContext, applicationUtils);
-        // Verify
-        verify(applicationContext, times(1)).putContext(any(), any());
-    }
+    //
+    // interactiveMode
+    //
+
+    //
+    // nonInteractiveMode
+    //
+
+    //
+    // initializeVelocity
+    //
 
     @Test
-    void extractSpecificActionContentWhereActionIsPomFileDependencyAction() {
+    void initializeVelocityWhereExceptionsAreNotExpected() {
         // Initialize
-        Action action = new PomFileDependencyAction(dependencyContent);
-        String expected = dependencyContent;
         // Test
-        String result = this.sut.extractSpecificActionContent(action, applicationContext,
-                Application.PomFileDependencyActionClassName, applicationUtils);
+        this.sut.initializeVelocity(applicationContext, applicationUtils);
         // Verify
-        assertThat(result).isEqualTo(expected);
     }
 
+    //
+    // initializeVelocityContext
+    //
     @Test
-    void extractSpecificActionContentWhereActionIsPomFilePropertyAction() {
+    void initializeVelocityContext() {
         // Initialize
-        Action action = new PomFilePropertyAction(dependencyContent);
-        String expected = dependencyContent;
+        when(applicationContext.getProjectName()).thenReturn(PROJECT_NAME);
+        when(applicationContext.getProgramNameUsedInPrintVersion()).thenReturn(PROGRAM_NAME_USED_IN_PRINT_VERSION);
+        when(applicationContext.getPackageName()).thenReturn(PACKAGE_NAME);
+        when(applicationContext.getArtifactId()).thenReturn(ARTIFACT_ID);
+        when(applicationContext.getGroupId()).thenReturn(GROUPR_ID);
+        when(applicationContext.getVersionOfApplication()).thenReturn(VERSION_OF_APPLICATION);
+        doReturn(DEPENDECIES_STRING).when(this.sutSpy).extractApplicationTypeContent(applicationContext, actionRepository,
+                PomFileDependencyActionClassName, applicationUtils);
+        doReturn(PROPERTIES_STRING).when(this.sutSpy).extractApplicationTypeContent(applicationContext, actionRepository,
+                PomFilePropertyActionClassName, applicationUtils);
+        doReturn(PLUGINS_STRING).when(this.sutSpy).extractApplicationTypeContent(applicationContext, actionRepository,
+                PomFilePluginActionClassName, applicationUtils);
+        String expectedPropertiesString = "    <properties>\n" + PROPERTIES_STRING + "    </properties>\n";
         // Test
-        String result = this.sut.extractSpecificActionContent(action, applicationContext,
-                Application.PomFilePropertyActionClassName, applicationUtils);
+        Context velocityContext = this.sutSpy.initializeVelocityContext(applicationContext, actionRepository, propertyRepository, applicationUtils);
         // Verify
-        assertThat(result).isEqualTo(expected);
+        assertThat(velocityContext.get(PROJECT_NAME_STRING_KEY)).isEqualTo(PROJECT_NAME);
+        assertThat(velocityContext.get(PROGRAM_NAME_USED_IN_PRINT_VERSION_STRING_KEY)).isEqualTo(PROGRAM_NAME_USED_IN_PRINT_VERSION);
+        assertThat(velocityContext.get(PACKAGE_NAME_STRING_KEY)).isEqualTo(PACKAGE_NAME);
+        assertThat(velocityContext.get(ARTIFACT_ID_STRING_KEY)).isEqualTo(ARTIFACT_ID);
+        assertThat(velocityContext.get(GROUPR_ID_STRING_KEY)).isEqualTo(GROUPR_ID);
+        assertThat(velocityContext.get(VERSION_OF_APPLICATION_STRING_KEY)).isEqualTo(VERSION_OF_APPLICATION);
+        assertThat(velocityContext.get(DEPENDECIES_STRING_STRING_KEY)).isEqualTo(DEPENDECIES_STRING);
+        assertThat(velocityContext.get(PROPERTIES_STRING_STRING_KEY)).isEqualTo(expectedPropertiesString);
+        assertThat(velocityContext.get(PLUGINS_STRING_STRING_KEY)).isEqualTo(PLUGINS_STRING);
     }
 
-    @Test
-    void extractSpecificActionContentWhereActionIsListOfAction() {
-        // Initialize
-        ListOfAction action = new ListOfAction();
-        Action action1 = new PomFileDependencyAction(dependencyContent);
-        action.addAction(action1);
-        Action action2 = new PomFileDependencyAction(dependencyContent2);
-        action.addAction(action2);
-        String expected = dependencyContent + dependencyContent2;
-        // Test
-        String result = this.sut.extractSpecificActionContent(action, applicationContext,
-                Application.PomFileDependencyActionClassName, applicationUtils);
-        // Verify
-        assertThat(result).isEqualTo(expected);
-    }
-
-    @Test
-    void extractSpecificActionContentWhereActionIsFolderPathActionButExpectedIsPomFileDependencyAction() {
-        // Initialize
-        Action action = new FolderPathAction(folderPath, propertyName);
-        // Test
-        String result = this.sut.extractSpecificActionContent(action, applicationContext,
-                Application.PomFileDependencyActionClassName, applicationUtils);
-        // Verify
-        assertThat(result).isBlank();
-    }
 
     @Test
     void extractDependencies() {
@@ -395,20 +261,318 @@ public class ApplicationTest {
         String expected = dependencyContent + dependencyContent;
         // Test
         String result = this.sutSpy.extractApplicationTypeContent(applicationContext, actionRepository,
-                Application.PomFileDependencyActionClassName, applicationUtils);
+                PomFileDependencyActionClassName, applicationUtils);
         // Verify
         assertThat(result).isEqualTo(expected);
     }
 
     @Test
-    void initializeVelocity() {
+    void extractSpecificActionContentWhereActionIsPomFileDependencyAction() {
         // Initialize
-        doReturn(dependencyContent).when(sutSpy).extractApplicationTypeContent(any(), any(), any(), any());
+        Action action = new PomFileDependencyAction(dependencyContent);
+        String expected = dependencyContent;
         // Test
-        Context velocityContext = this.sutSpy.initializeVelocity(applicationContext, actionRepository, applicationUtils);
+        String result = this.sut.extractSpecificActionContent(action, applicationContext,
+                PomFileDependencyActionClassName, applicationUtils);
         // Verify
-        assertThat(velocityContext).isNotNull();
+        assertThat(result).isEqualTo(expected);
     }
+
+    @Test
+    void extractSpecificActionContentWhereActionIsPomFilePropertyAction() {
+        // Initialize
+        Action action = new PomFilePropertyAction(dependencyContent);
+        String expected = dependencyContent;
+        // Test
+        String result = this.sut.extractSpecificActionContent(action, applicationContext,
+                PomFilePropertyActionClassName, applicationUtils);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void extractSpecificActionContentWhereActionIsListOfAction() {
+        // Initialize
+        ListOfAction action = new ListOfAction();
+        Action action1 = new PomFileDependencyAction(dependencyContent);
+        action.addAction(action1);
+        Action action2 = new PomFileDependencyAction(dependencyContent2);
+        action.addAction(action2);
+        String expected = dependencyContent + dependencyContent2;
+        // Test
+        String result = this.sut.extractSpecificActionContent(action, applicationContext,
+                PomFileDependencyActionClassName, applicationUtils);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void extractSpecificActionContentWhereActionIsFolderPathActionButExpectedIsPomFileDependencyAction() {
+        // Initialize
+        Action action = new FolderPathAction(folderPath, propertyName);
+        // Test
+        String result = this.sut.extractSpecificActionContent(action, applicationContext,
+                PomFileDependencyActionClassName, applicationUtils);
+        // Verify
+        assertThat(result).isBlank();
+    }
+
+    //
+    // createProjectFolder
+    //
+
+    @Test
+    void createProjectFolder(@TempDir Path tempDir) {
+        // Initialize
+        when(applicationContext.getProjectName()).thenReturn(artifactId);
+        when(applicationContext.getUserDir()).thenReturn(tempDir.toString());
+        // Test
+        this.sut.createProjectFolder(applicationContext, applicationUtils, propertyRepository);
+        // Verify
+        verify(propertyRepository, times(2)).put(any(), any());
+    }
+
+    //
+    // addFolderPropertiesToVelocityContext
+    //
+
+    @Test
+    void addFolderPropertiesToVelocityContextFromFolderPathActionWhereActionIsNotFolderPathActionOrListOfAction() {
+        // Initialize
+        Application.UNRESOLVED_PROPERTIES expected = Application.UNRESOLVED_PROPERTIES.NO;
+        Action action = new PomFileDependencyAction(action1);
+        VelocityContext velocityContext = new VelocityContext();
+        // Test
+        Application.UNRESOLVED_PROPERTIES result = this.sutSpy.addFolderPropertiesToVelocityContextFromFolderPathAction(action, applicationContext, velocityContext, applicationUtils, propertyRepository);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+        verify(this.sutSpy, times(1)).addFolderPropertiesToVelocityContextFromFolderPathAction(any(), any(), any(), any(), any());
+        verify(propertyRepository, never()).containsNotProperty(any());
+        verify(propertyRepository, never()).put(any(), any());
+    }
+
+    @Test
+    void addFolderPropertiesToVelocityContextFromFolderPathActionWhereActionIsFolderPathActionFirstTime() {
+        // Initialize
+        Application.UNRESOLVED_PROPERTIES expected = Application.UNRESOLVED_PROPERTIES.NO;
+        Action action = new FolderPathAction(FOLDER_PATH_ACTION_CONTENT_1, FOLDER_PATH_KEY);
+        VelocityContext velocityContext = new VelocityContext();
+        velocityContext.put(CONTEXT_FOLDER_PATH_KEY_1, CONTEXT_FOLDER_PATH_VALUE);
+        when(propertyRepository.containsNotProperty(FOLDER_PATH_KEY)).thenReturn(true);
+        // Test
+        Application.UNRESOLVED_PROPERTIES result = this.sutSpy.addFolderPropertiesToVelocityContextFromFolderPathAction(action, applicationContext, velocityContext, applicationUtils, propertyRepository);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+        verify(this.sutSpy, times(1)).addFolderPropertiesToVelocityContextFromFolderPathAction(any(), any(), any(), any(), any());
+        verify(propertyRepository, times(1)).put(any(), any());
+        assertThat(velocityContext.get(FOLDER_PATH_KEY)).isEqualTo(FOLDER_PATH_ACTION_CONTENT_RESULT);
+    }
+
+    @Test
+    void addFolderPropertiesToVelocityContextFromFolderPathActionWhereActionIsFolderPathActionSecondTime() {
+        // Initialize
+        Application.UNRESOLVED_PROPERTIES expected = Application.UNRESOLVED_PROPERTIES.NO;
+        Action action = new FolderPathAction(FOLDER_PATH_ACTION_CONTENT_1, FOLDER_PATH_KEY);
+        VelocityContext velocityContext = new VelocityContext();
+        when(propertyRepository.containsNotProperty(FOLDER_PATH_KEY)).thenReturn(false);
+        // Test
+        Application.UNRESOLVED_PROPERTIES result = this.sutSpy.addFolderPropertiesToVelocityContextFromFolderPathAction(action, applicationContext, velocityContext, applicationUtils, propertyRepository);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+        verify(this.sutSpy, times(1)).addFolderPropertiesToVelocityContextFromFolderPathAction(any(), any(), any(), any(), any());
+        verify(propertyRepository, never()).put(any(), any());
+    }
+
+    @Test
+    void addFolderPropertiesToVelocityContextFromFolderPathActionWhereActionIsFolderPathActionContainsMutipleVariables() {
+        // Initialize
+        Application.UNRESOLVED_PROPERTIES expected = Application.UNRESOLVED_PROPERTIES.YES;
+        Action action = new FolderPathAction(FOLDER_PATH_ACTION_CONTENT_2, FOLDER_PATH_KEY);
+        VelocityContext velocityContext = new VelocityContext();
+        velocityContext.put(CONTEXT_FOLDER_PATH_KEY_1, CONTEXT_FOLDER_PATH_VALUE);
+        when(propertyRepository.containsNotProperty(FOLDER_PATH_KEY)).thenReturn(true);
+        // Test
+        Application.UNRESOLVED_PROPERTIES result = this.sutSpy.addFolderPropertiesToVelocityContextFromFolderPathAction(action, applicationContext, velocityContext, applicationUtils, propertyRepository);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+        verify(this.sutSpy, times(1)).addFolderPropertiesToVelocityContextFromFolderPathAction(any(), any(), any(), any(), any());
+        verify(propertyRepository, never()).put(any(), any());
+    }
+
+    @Test
+    void addFolderPropertiesToVelocityContextFromFolderPathActionWhereActionIsListOfActionContainingNotFolderPathAction() {
+        // Initialize
+        Application.UNRESOLVED_PROPERTIES expected = Application.UNRESOLVED_PROPERTIES.NO;
+        ListOfAction action = new ListOfAction();
+        action.addAction(new PomFileDependencyAction(action1));
+        VelocityContext velocityContext = new VelocityContext();
+        // Test
+        Application.UNRESOLVED_PROPERTIES result = this.sutSpy.addFolderPropertiesToVelocityContextFromFolderPathAction(action, applicationContext, velocityContext, applicationUtils, propertyRepository);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void addFolderPropertiesToVelocityContextFromFolderPathActionWhereActionIsListOfActionContainingFolderPathAction() {
+        // Initialize
+        Application.UNRESOLVED_PROPERTIES expected = Application.UNRESOLVED_PROPERTIES.NO;
+        ListOfAction action = new ListOfAction();
+        action.addAction(new FolderPathAction(FOLDER_PATH_ACTION_CONTENT_1, FOLDER_PATH_KEY));
+        VelocityContext velocityContext = new VelocityContext();
+        velocityContext.put(CONTEXT_FOLDER_PATH_KEY_1, CONTEXT_FOLDER_PATH_VALUE);
+        when(propertyRepository.containsNotProperty(FOLDER_PATH_KEY)).thenReturn(true);
+        // Test
+        Application.UNRESOLVED_PROPERTIES result = this.sutSpy.addFolderPropertiesToVelocityContextFromFolderPathAction(action, applicationContext, velocityContext, applicationUtils, propertyRepository);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void addFolderPropertiesToVelocityContextFromFolderPathActionWhereActionIsListOfActionContainingFolderPathAction2() {
+        // Initialize
+        Application.UNRESOLVED_PROPERTIES expected = Application.UNRESOLVED_PROPERTIES.YES;
+        ListOfAction action = new ListOfAction();
+        action.addAction(new FolderPathAction(FOLDER_PATH_ACTION_CONTENT_2, FOLDER_PATH_KEY));
+        VelocityContext velocityContext = new VelocityContext();
+        velocityContext.put(CONTEXT_FOLDER_PATH_KEY_1, CONTEXT_FOLDER_PATH_VALUE);
+        when(propertyRepository.containsNotProperty(FOLDER_PATH_KEY)).thenReturn(true);
+        // Test
+        Application.UNRESOLVED_PROPERTIES result = this.sutSpy.addFolderPropertiesToVelocityContextFromFolderPathAction(action, applicationContext, velocityContext, applicationUtils, propertyRepository);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    void addFolderPropertiesToVelocityContextWhereAllActionsReturnNoUnresolvedProperties() {
+        // Initialize
+        String name = "";
+        String description = "";
+        Collection<String> actionNames = List.of("a1", "a2", "a3");
+        ApplicationType applicationType = new ApplicationType(name, description, actionNames);
+        when(applicationContext.getApplicationType()).thenReturn(applicationType);
+        when(actionRepository.getAction(any())).thenReturn(new PomFileDependencyAction(""));
+        doReturn(Application.UNRESOLVED_PROPERTIES.NO).when(this.sutSpy).addFolderPropertiesToVelocityContextFromFolderPathAction(any(), any(), any(), any(), any());
+        VelocityContext velocityContext = new VelocityContext();
+        // Test
+        this.sutSpy.addFolderPropertiesToVelocityContext(velocityContext, applicationContext, actionRepository, propertyRepository, applicationUtils);
+        // Verify
+    }
+
+    @Test
+    void addFolderPropertiesToVelocityContextWhereOneActionsReturnUnresolvedProperties() {
+        // Initialize
+        String name = "";
+        String description = "";
+        Collection<String> actionNames = List.of("a1", "a2", "a3");
+        ApplicationType applicationType = new ApplicationType(name, description, actionNames);
+        when(applicationContext.getApplicationType()).thenReturn(applicationType);
+        when(actionRepository.getAction(any())).thenReturn(new PomFileDependencyAction(""));
+        doReturn(Application.UNRESOLVED_PROPERTIES.NO, Application.UNRESOLVED_PROPERTIES.YES, Application.UNRESOLVED_PROPERTIES.NO).when(this.sutSpy).addFolderPropertiesToVelocityContextFromFolderPathAction(any(), any(), any(), any(), any());
+        VelocityContext velocityContext = new VelocityContext();
+        // Test
+        this.sutSpy.addFolderPropertiesToVelocityContext(velocityContext, applicationContext, actionRepository, propertyRepository, applicationUtils);
+        // Verify
+    }
+
+    //
+    // createFoldersFromActionList
+    //
+
+    @Test
+    void createFoldersFromActionWhereActionIsNotListOfActionOrFolderPathAction() {
+        // Initialize
+        Action action = new PomFileDependencyAction(action1);
+        // Test
+        this.sutSpy.createFoldersFromAction(action, applicationContext, applicationUtils, propertyRepository);
+        // Verify
+        verify(propertyRepository, never()).get(any());
+        verify(propertyRepository, never()).put(any(), any());
+    }
+
+    @Test
+    void createFoldersFromActionWhereActionIsFolderPathAction(@TempDir Path tempDir) {
+        // Initialize
+        FolderPathAction action = new FolderPathAction(FOLDER_PATH_ACTION_CONTENT_1, FOLDER_PATH_KEY);
+        when(propertyRepository.get(projectFolderPathPropertyName)).thenReturn(tempDir.toString());
+        when(propertyRepository.get(FOLDER_PATH_KEY)).thenReturn(CONTEXT_FOLDER_PATH_VALUE);
+        Path expectedPath = Paths.get(tempDir.toString(), CONTEXT_FOLDER_PATH_VALUE);
+        // Test
+        this.sutSpy.createFoldersFromAction(action, applicationContext, applicationUtils, propertyRepository);
+        // Verify
+        verify(propertyRepository, times(1)).put(eq(action.getPropertyName() + "Path"), any());
+        assertThat(Files.exists(expectedPath)).isTrue();
+    }
+
+    @Test
+    void createFoldersFromActionWhereActionIsListOfAction() {
+        // Initialize
+        ListOfAction action = new ListOfAction();
+        action.addAction(new PomFileDependencyAction(action1));
+        // Test
+        this.sutSpy.createFoldersFromAction(action, applicationContext, applicationUtils, propertyRepository);
+        // Verify
+        verify(propertyRepository, never()).get(any());
+        verify(propertyRepository, never()).put(any(), any());
+    }
+
+    @Test
+    void createFoldersFromActionWhereActionIsFolderPathActionWithNonExistingKey(@TempDir Path tempDir) {
+        // Initialize
+        FolderPathAction action = new FolderPathAction(FOLDER_PATH_ACTION_CONTENT_1, FOLDER_PATH_KEY);
+        when(propertyRepository.containsNotProperty(FOLDER_PATH_KEY)).thenReturn(true);
+        // Test
+        RuntimeException thrown = Assertions.assertThrows(RuntimeException.class, () -> {
+            this.sut.createFoldersFromAction(action, applicationContext, applicationUtils, propertyRepository);
+        }, "RuntimeException expected to be thrown.");
+        // Verify
+        assertThat(thrown.getMessage()).startsWith("Property name: '");
+        assertThat(thrown.getMessage()).contains("is not stored in PropertyRepository.");
+    }
+
+    @Test
+    void createFoldersFromActionWhereActionIsFolderPathActionWithKeyBlank(@TempDir Path tempDir) {
+        // Initialize
+        FolderPathAction action = new FolderPathAction(FOLDER_PATH_ACTION_CONTENT_1, FOLDER_PATH_KEY);
+        when(propertyRepository.containsNotProperty(FOLDER_PATH_KEY)).thenReturn(false);
+        when(propertyRepository.get(FOLDER_PATH_KEY)).thenReturn(" ");
+        // Test
+        RuntimeException thrown = Assertions.assertThrows(RuntimeException.class, () -> {
+            this.sut.createFoldersFromAction(action, applicationContext, applicationUtils, propertyRepository);
+        }, "RuntimeException expected to be thrown.");
+        // Verify
+        assertThat(thrown.getMessage()).startsWith("Property name: '");
+        assertThat(thrown.getMessage()).contains("is stored in PropertyRepository as empty string: '");
+    }
+
+    @Test
+    void createFoldersFromActionWhereActionIsFolderPathActionWithKeyContainingVariable(@TempDir Path tempDir) {
+        // Initialize
+        FolderPathAction action = new FolderPathAction(FOLDER_PATH_ACTION_CONTENT_1, FOLDER_PATH_KEY);
+        when(propertyRepository.containsNotProperty(FOLDER_PATH_KEY)).thenReturn(false);
+        when(propertyRepository.get(FOLDER_PATH_KEY)).thenReturn(FOLDER_PATH_ACTION_CONTENT_1);
+        // Test
+        RuntimeException thrown = Assertions.assertThrows(RuntimeException.class, () -> {
+            this.sut.createFoldersFromAction(action, applicationContext, applicationUtils, propertyRepository);
+        }, "RuntimeException expected to be thrown.");
+        // Verify
+        assertThat(thrown.getMessage()).startsWith("Property name: '");
+        assertThat(thrown.getMessage()).contains("is stored in PropertyRepository with variable name in it. See: '");
+    }
+
+    /*
+    @Test
+    void createFoldersFromActionList() {
+        // Initialize
+        // Test
+        this.sut.createFoldersFromActionList(applicationContext, applicationUtils, actionRepository, propertyRepository);
+        // Verify
+        assertThat(result).isEqualTo(expected);
+    }
+     */
+
+    //
+    // createFilesFromActionList
+    //
 
     @Test
     void processVelocityTemplate(@TempDir Path tempDir) throws IOException {

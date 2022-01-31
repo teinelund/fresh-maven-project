@@ -16,22 +16,12 @@ public class ApplicationContext implements Verbosable {
     private String packageName;
     private String packageFolderPathName;
     private boolean verbose;
-    private Application.TypeOfApplication typeOfApplication;
+    private TypeOfApplication typeOfApplication;
     private ApplicationType applicationType;
     boolean isNoGit = false;
     private String programNameUsedInPrintVersion;
     private Path srcMainJavaPackagePath;
     private Path srcTestJavaPackagePath;
-
-    private Map<String, Object> contextMap = new HashMap<>();
-
-    public void putContext(String key, Object value) {
-        contextMap.put(key, value);
-    }
-
-    public Object getContext(String key) {
-        return contextMap.get(key);
-    }
 
     public String getGroupId() {
         return groupid;
@@ -81,11 +71,11 @@ public class ApplicationContext implements Verbosable {
         this.verbose = verbose;
     }
 
-    public void setTypeOfApplication(Application.TypeOfApplication typeOfApplication) {
+    public void setTypeOfApplication(TypeOfApplication typeOfApplication) {
         this.typeOfApplication = typeOfApplication;
     }
 
-    public Application.TypeOfApplication getTypeOfApplication() {
+    public TypeOfApplication getTypeOfApplication() {
         return this.typeOfApplication;
     }
 

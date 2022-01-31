@@ -49,8 +49,8 @@ public class InteractiveQueryEngine {
         applicationUtils.printInteractive("");
         applicationUtils.printInteractive("What kind of application do you want to create?");
         int defaultOptionIndex = 1;
-        Application.TypeOfApplication typeOfApplication =
-                interactiveQueryTypeOfApplication("Type of application", Application.TypeOfApplication.values(),
+        TypeOfApplication typeOfApplication =
+                interactiveQueryTypeOfApplication("Type of application", TypeOfApplication.values(),
                         defaultOptionIndex, applicationUtils);
         context.setTypeOfApplication(typeOfApplication);
         applicationUtils.printInteractive("You selected to create a " + typeOfApplication.getDescription() + ".");
@@ -101,7 +101,7 @@ public class InteractiveQueryEngine {
         return text.replaceAll("-", "").replaceAll("_", "");
     }
 
-    Application.TypeOfApplication interactiveQueryTypeOfApplication(String question, Application.TypeOfApplication[] queryOptions, int defaultOptionIndex,
+    TypeOfApplication interactiveQueryTypeOfApplication(String question, TypeOfApplication[] queryOptions, int defaultOptionIndex,
                                                                     ApplicationUtils applicationUtils) {
         applicationUtils.printInteractive("Select one of the following options:");
         if (defaultOptionIndex < 0 || defaultOptionIndex >= queryOptions.length) {
@@ -109,7 +109,7 @@ public class InteractiveQueryEngine {
                     " has a illegal value. Legal value are 0 to " + Integer.toString(queryOptions.length - 1) + ".");
         }
         int index = 1;
-        for (Application.TypeOfApplication queryOption : queryOptions) {
+        for (TypeOfApplication queryOption : queryOptions) {
             applicationUtils.printInteractive("  " + Integer.toString(index) + ". " + queryOption.getDescription());
             index++;
         }

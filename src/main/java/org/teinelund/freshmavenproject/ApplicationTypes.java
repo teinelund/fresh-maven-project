@@ -22,7 +22,7 @@ import java.util.Map;
  */
 public class ApplicationTypes {
 
-    Map<Application.TypeOfApplication, List<ApplicationType>> applicationTypes = new HashMap<>();
+    Map<TypeOfApplication, List<ApplicationType>> applicationTypes = new HashMap<>();
     Map<String, List<Action>> actionMap = new HashMap<>();
 
     public ApplicationTypes() {
@@ -38,7 +38,7 @@ public class ApplicationTypes {
         actionNames.add("plugins_basic");
         at = new ApplicationType("J2EE_STRUTS_1", "Struts 1", actionNames);
         list.add(at);
-        applicationTypes.put(Application.TypeOfApplication.J2EE, list);
+        applicationTypes.put(TypeOfApplication.J2EE, list);
         list = new LinkedList<>();
         actionNames = new LinkedList<>();
         actionNames.add("CLA");
@@ -55,16 +55,16 @@ public class ApplicationTypes {
         actionNames.add("plugins_basic");
         at = new ApplicationType("CLA_BASIC", "Basic (Maven Shade Plugin, JCommander, Jansi, Commons Lang3, Commons IO, Junit Jupiter, AssertJ and Mockito)", actionNames);
         list.add(at);
-        applicationTypes.put(Application.TypeOfApplication.COMMAND_LINE_APPLICATION, list);
+        applicationTypes.put(TypeOfApplication.COMMAND_LINE_APPLICATION, list);
         actionNames = new LinkedList<>();
         actionNames.add("LIB");
         actionNames.add("plugins_basic");
         at = new ApplicationType("LIB_SLIM", "Slim (no dependencies)", actionNames);
         list.add(at);
-        applicationTypes.put(Application.TypeOfApplication.LIBRARY, list);
+        applicationTypes.put(TypeOfApplication.LIBRARY, list);
     }
 
-    public List<ApplicationType> getQueries(Application.TypeOfApplication applicationType) {
+    public List<ApplicationType> getQueries(TypeOfApplication applicationType) {
         return this.applicationTypes.get(applicationType);
     }
 }
