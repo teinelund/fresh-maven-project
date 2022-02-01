@@ -47,8 +47,6 @@ public class ActionRepository {
         cla.addAction(testPackageFolderPath);
         FileAction pomFile = new FileAction("pom.vtl", "pom.xml", "projectFolderPathName");
         cla.addAction(pomFile);
-        FileAction applicationFile = new FileAction("Application.vtl", "Application.java", "mainPackageFolderPathName");
-        cla.addAction(applicationFile);
         FileAction applicationTestFile = new FileAction("ApplicationTest.vtl", "ApplicationTest.java", "testPackageFolderPathName");
         cla.addAction(applicationTestFile);
         StringBuilder content = new StringBuilder();
@@ -147,6 +145,15 @@ public class ActionRepository {
 
         actionMap.put("plugins_basic", plugins_basic);
 
+        //
+        // Files
+        //
+
+        FileAction applicationClaBasicFile = new FileAction("Application_CLA_Basic.vtl", "Application.java", "mainPackageFolderPathName");
+        actionMap.put("application_CLA_Basic", applicationClaBasicFile);
+
+        FileAction applicationClaSlimFile = new FileAction("Application_CLA_Slim.vtl", "Application.java", "mainPackageFolderPathName");
+        actionMap.put("application_CLA_Slim", applicationClaSlimFile);
 
         //
         // Dependencies

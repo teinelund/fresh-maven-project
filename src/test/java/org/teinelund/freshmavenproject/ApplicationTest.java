@@ -578,7 +578,7 @@ public class ApplicationTest {
     void processVelocityTemplate(@TempDir Path tempDir) throws IOException {
         // Initialize
         String targetFileName = "Application.java";
-        String templateName = "Application.vtl";
+        String templateName = "Application_CLA_Basic.vtl";
         // Test
         this.sut.processVelocityTemplate(targetFileName, templateName, tempDir, applicationContext, context, applicationUtils);
         // Verify

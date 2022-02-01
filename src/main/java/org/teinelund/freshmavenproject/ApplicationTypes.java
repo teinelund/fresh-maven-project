@@ -43,6 +43,8 @@ public class ApplicationTypes {
         actionNames = new LinkedList<>();
         actionNames.add("CLA");
         actionNames.add("plugins_basic");
+        actionNames.add("unit test 5");
+        actionNames.add("application_CLA_Slim");
         at = new ApplicationType("CLA_SLIM", "Slim (Maven Shade Plugin)", actionNames);
         list.add(at);
         actionNames = new LinkedList<>();
@@ -53,6 +55,7 @@ public class ApplicationTypes {
         actionNames.add("commons io");
         actionNames.add("unit test 5");
         actionNames.add("plugins_basic");
+        actionNames.add("application_CLA_Basic");
         at = new ApplicationType("CLA_BASIC", "Basic (Maven Shade Plugin, JCommander, Jansi, Commons Lang3, Commons IO, Junit Jupiter, AssertJ and Mockito)", actionNames);
         list.add(at);
         applicationTypes.put(TypeOfApplication.COMMAND_LINE_APPLICATION, list);
