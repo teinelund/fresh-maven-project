@@ -59,8 +59,11 @@ public class ApplicationTypes {
         at = new ApplicationType("CLA_BASIC", "Basic (Maven Shade Plugin, JCommander, Jansi, Commons Lang3, Commons IO, Junit Jupiter, AssertJ and Mockito)", actionNames);
         list.add(at);
         applicationTypes.put(TypeOfApplication.COMMAND_LINE_APPLICATION, list);
+        list = new LinkedList<>();
         actionNames = new LinkedList<>();
         actionNames.add("LIB");
+        actionNames.add("application_CLA_Slim");
+        actionNames.add("unit test 5");
         actionNames.add("plugins_basic");
         at = new ApplicationType("LIB_SLIM", "Slim (no dependencies)", actionNames);
         list.add(at);

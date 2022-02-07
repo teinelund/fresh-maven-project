@@ -92,6 +92,15 @@ public class ActionRepository {
         cla.addAction(shade_jar_plugins);
         actionMap.put("CLA", cla);
 
+        ListOfAction lib = new ListOfAction();
+        lib.addAction(srcMainJavaPath);
+        lib.addAction(srcTestJavaPath);
+        lib.addAction(mainPackageFolderPath);
+        lib.addAction(testPackageFolderPath);
+        lib.addAction(pomFile);
+        lib.addAction(applicationTestFile);
+        actionMap.put("LIB", lib);
+
         ListOfAction plugins_basic = new ListOfAction();
 
         content = new StringBuilder();
